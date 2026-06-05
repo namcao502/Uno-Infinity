@@ -2,6 +2,11 @@ runConfig:
   cpu: 1
   memoryMiB: 512
   maxInstances: 2
+# npm-workspace monorepo: build/run from the repo root so @uno/engine resolves.
+# (App Hosting runs these from /workspace regardless of the backend root directory.)
+scripts:
+  buildCommand: npm run build:web
+  runCommand: npm run start -w apps/web
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: "AIzaSyAzpD2DcBWZh2DbQoFEPLZZR9UDu7N2MVI"
