@@ -1,0 +1,20 @@
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  maxInstances: 2
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyAzpD2DcBWZh2DbQoFEPLZZR9UDu7N2MVI"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "uno-infinity.firebaseapp.com"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
+    value: "https://uno-infinity-default-rtdb.firebaseio.com"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "uno-infinity"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:952368746686:web:cc3f038242ec117ed04eef"
+    availability: [BUILD, RUNTIME]

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup: Uno Multiplayer</title>
+<style>
+  :root{
+    --red:#e63946; --yellow:#f4c430; --green:#2a9d4a; --blue:#2b6cb0;
+    --ink:#15161c; --felt:#0c5c3c; --felt2:#0a4a31;
+    --panel:#1c1e27; --panel2:#262936; --line:#343849;
+    --txt:#e9ecf3; --muted:#9aa3b2; --accent:#f4c430;
+    --radius:14px; --shadow:0 12px 34px rgba(0,0,0,.45);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0a0b10;color:var(--txt);min-height:100vh}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 22px 60px}
+
+  /* top tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:0;background:#0a0b10;padding:14px 0;z-index:20;border-bottom:1px solid var(--line)}
+  .tab{padding:9px 16px;border-radius:999px;background:var(--panel);color:var(--muted);
+    border:1px solid var(--line);cursor:pointer;font-weight:600;font-size:13px;letter-spacing:.2px}
+  .tab.active{background:var(--accent);color:#1a1500;border-color:var(--accent)}
+  .note{color:var(--muted);font-size:12px;margin:10px 2px 22px}
+
+  .screen{display:none;animation:fade .3s ease}
+  .screen.show{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* shared */
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.5px}
+  .logo{display:inline-flex}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:11px;padding:12px 18px;
+    font-weight:700;font-size:14px;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#1a1500}
+  .btn-ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+  .btn-red{background:var(--red);color:#fff}
+  .card-mini{width:34px;height:50px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;
+    font-weight:800;color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.85)}
+
+  /* ---------- LANDING ---------- */
+  .nav{display:flex;justify-content:space-between;align-items:center;padding:6px 0 30px}
+  .nav .links{display:flex;gap:22px;color:var(--muted);font-size:14px;font-weight:600}
+  .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:center}
+  .hero h1{font-size:52px;line-height:1.04;margin:6px 0 16px;font-weight:850;letter-spacing:-1px}
+  .hero h1 span{color:var(--accent)}
+  .hero p{color:var(--muted);font-size:17px;line-height:1.6;max-width:480px}
+  .hero .cta{display:flex;gap:12px;margin-top:26px}
+  .fan{position:relative;height:300px;display:flex;justify-content:center;align-items:center}
+  .fan .card-big{position:absolute;width:120px;height:178px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    font-size:46px;font-weight:850;color:#fff;border:5px solid #fff;box-shadow:var(--shadow)}
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:64px}
+  .feature{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+  .feature h3{margin:10px 0 6px;font-size:16px}
+  .feature p{color:var(--muted);font-size:13px;line-height:1.5;margin:0}
+  .ficon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+
+  /* ---------- LOBBY + RULE BUILDER ---------- */
+  .lob{display:grid;grid-template-columns:1fr 360px;gap:22px;align-items:start}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .panel h2{margin:0 0 4px;font-size:18px}
+  .panel .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+  .input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--txt);padding:11px 12px;font-size:14px}
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg span{flex:1;text-align:center;padding:9px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+  .seg span.on{background:var(--accent);color:#1a1500}
+
+  .rules-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .preset{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .preset .chip{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;background:var(--panel2);border:1px solid var(--line);color:var(--muted);cursor:pointer}
+  .preset .chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .rgroup{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .rgroup>.gh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--panel2);font-weight:700;font-size:13px}
+  .rrow{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
+  .rrow .lbl{font-size:13px}
+  .rrow .lbl small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+  .toggle{width:42px;height:24px;border-radius:999px;background:#3a3f52;position:relative;cursor:pointer;flex:none}
+  .toggle.on{background:var(--green)}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+  .toggle.on::after{left:21px}
+  .stepper{display:flex;align-items:center;gap:10px}
+  .stepper b{min-width:22px;text-align:center}
+  .stepper button{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);cursor:pointer;font-weight:800}
+
+  .players{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .prow{display:flex;align-items:center;gap:11px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+  .av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1500}
+  .prow .nm{font-size:14px;font-weight:600}
+  .prow .tag{margin-left:auto;font-size:11px;color:var(--muted)}
+  .roomcode{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px dashed var(--line);border-radius:11px;padding:12px 14px;margin-top:4px}
+  .roomcode b{font-size:22px;letter-spacing:4px;color:var(--accent)}
+
+  /* ---------- GAME TABLE ---------- */
+  .table-wrap{background:radial-gradient(ellipse at center,var(--felt),var(--felt2));border:1px solid #0a3d29;border-radius:20px;padding:18px;position:relative;min-height:560px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .seat{position:absolute;display:flex;flex-direction:column;align-items:center;gap:6px;width:120px}
+  .seat .av2{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1500;border:3px solid transparent}
+  .seat.turn .av2{border-color:var(--yellow);box-shadow:0 0 0 4px rgba(244,196,48,.25)}
+  .seat .nm2{font-size:12px;font-weight:700}
+  .seat .cnt{font-size:11px;color:#cfe8d8;background:rgba(0,0,0,.3);padding:2px 8px;border-radius:999px}
+  .seat .backs{display:flex}
+  .seat .backs .b{width:18px;height:26px;border-radius:4px;background:repeating-linear-gradient(45deg,#1b1d27,#1b1d27 3px,#2b2f40 3px,#2b2f40 6px);border:1px solid #000;margin-left:-9px}
+  .center{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);display:flex;gap:26px;align-items:center}
+  .deck{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .deck .pile{width:74px;height:108px;border-radius:12px;background:repeating-linear-gradient(45deg,#15161c,#15161c 5px,#262936 5px,#262936 10px);border:3px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;box-shadow:var(--shadow)}
+  .deck small{color:#cfe8d8;font-size:11px}
+  .discard .top{width:80px;height:116px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:850;color:#fff;border:5px solid #fff;box-shadow:var(--shadow)}
+  .dirhint{position:absolute;top:46%;left:50%;width:230px;height:230px;border:2px dashed rgba(255,255,255,.18);border-radius:50%;transform:translate(-50%,-50%)}
+
+  .hand{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:flex-end}
+  .hand .pc{width:66px;height:98px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:850;color:#fff;border:4px solid #fff;margin-left:-14px;box-shadow:0 8px 16px rgba(0,0,0,.45);transition:transform .15s;cursor:pointer}
+  .hand .pc:first-child{margin-left:0}
+  .hand .pc.play{transform:translateY(-18px);outline:3px solid var(--yellow)}
+  .hand .pc.dim{filter:brightness(.55) saturate(.6)}
+  .handbar{position:absolute;bottom:122px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+  .uno-btn{background:var(--red);color:#fff;font-weight:850;border:none;border-radius:999px;padding:10px 22px;font-size:15px;letter-spacing:1px;box-shadow:0 6px 16px rgba(230,57,70,.5);cursor:pointer}
+
+  /* side chat */
+  .game-grid{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+  .chat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;height:560px}
+  .chat .ch{padding:13px 15px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+  .chat .body{flex:1;padding:13px 15px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+  .msg{font-size:13px;line-height:1.4}
+  .msg b{color:var(--accent)}
+  .msg.sys{color:var(--muted);font-style:italic;font-size:12px}
+  .emotes{display:flex;gap:6px;padding:10px 12px;border-top:1px solid var(--line)}
+  .emotes span{font-size:20px;cursor:pointer;padding:4px;border-radius:8px}
+  .emotes span:hover{background:var(--panel2)}
+  .chat .inp{display:flex;gap:8px;padding:11px 12px;border-top:1px solid var(--line)}
+  .chat .inp input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--txt);padding:9px 11px;font-size:13px}
+
+  .r{background:var(--red)} .y{background:var(--yellow);color:#1a1500!important} .g{background:var(--green)} .b{background:var(--blue)} .k{background:#15161c}
+  .y.card-mini,.y.pc,.y.card-big,.y.top{color:#1a1500!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="tabs">
+    <div class="tab active" data-s="landing">1 - Landing</div>
+    <div class="tab" data-s="lobby">2 - Create Room + Rule Builder</div>
+    <div class="tab" data-s="game">3 - Game Table</div>
+  </div>
+  <div class="note">Static mockup of the three core screens. Colors, layout and component direction only - real data/interactivity comes later. Click the tabs.</div>
+
+  <!-- ============ LANDING ============ -->
+  <section class="screen show" id="landing">
+    <div class="nav">
+      <div class="brand"><span class="logo"><span class="card-mini r" style="margin-right:-12px;transform:rotate(-8deg)">U</span><span class="card-mini g" style="transform:rotate(8deg)">N</span></span> UNO ARENA</div>
+      <div class="links"><span>How to Play</span><span>House Rules</span><span>About</span><button class="btn btn-ghost">Sign in with Google</button></div>
+    </div>
+
+    <div class="hero">
+      <div>
+        <span class="pill" style="background:rgba(244,196,48,.15);color:var(--accent)">Real-time - up to 8 players - bots included</span>
+        <h1>Play Uno your way.<br><span>Every rule, your call.</span></h1>
+        <p>Spin up a private room in seconds, flip on stacking, 7-0 swaps, draw-to-match and more, then share a code. No sign-up needed - just pick a nickname and deal.</p>
+        <div class="cta">
+          <button class="btn btn-primary">Create a Room</button>
+          <button class="btn btn-ghost">Join with Code</button>
+        </div>
+      </div>
+      <div class="fan">
+        <div class="card-big b" style="transform:rotate(-22deg) translateX(-110px)">7</div>
+        <div class="card-big g" style="transform:rotate(-9deg) translateX(-55px)">+2</div>
+        <div class="card-big r" style="transform:rotate(2deg);z-index:3">&#9888;</div>
+        <div class="card-big y" style="transform:rotate(13deg) translateX(55px)">0</div>
+        <div class="card-big k" style="transform:rotate(24deg) translateX(110px);color:#fff">+4</div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature"><div class="ficon" style="background:rgba(230,57,70,.16)">&#9881;</div><h3>Full rule builder</h3><p>Toggle stacking, jump-in, force-play, 7-0, custom hand size and win conditions. Save presets like "Classic" or "Chaos".</p></div>
+      <div class="feature"><div class="ficon" style="background:rgba(43,108,176,.16)">&#9889;</div><h3>Instant rooms</h3><p>Private codes, live sync via Firebase, reconnect to your seat if you drop. Bots fill empty chairs.</p></div>
+      <div class="feature"><div class="ficon" style="background:rgba(42,157,74,.16)">&#128172;</div><h3>Chat & emotes</h3><p>Talk smack in-room, fire emoji reactions, and enjoy snappy card animations and sound.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ LOBBY ============ -->
+  <section class="screen" id="lobby">
+    <div class="lob">
+      <div class="panel">
+        <div class="rules-head">
+          <div><h2>Rule Builder</h2><p class="sub" style="margin:0">Customize before you deal. Changes apply to this room only.</p></div>
+          <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px">Save preset</button>
+        </div>
+        <div class="preset">
+          <span class="chip">Classic</span>
+          <span class="chip on">House Rules</span>
+          <span class="chip">Chaos</span>
+          <span class="chip">+ New</span>
+        </div>
+
+        <div class="rgroup">
+          <div class="gh"><span>Action stacking</span></div>
+          <div class="rrow"><div class="lbl">Stack +2 on +2<small>Pass accumulated penalty to next player</small></div><div class="toggle on"></div></div>
+          <div class="rrow"><div class="lbl">Stack +4 on +4<small>Wild Draw Four can be stacked</small></div><div class="toggle on"></div></div>
+          <div class="rrow"><div class="lbl">Cross-stack +2 / +4<small>Allow mixing both draw cards</small></div><div class="toggle"></div></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="gh"><span>Draw mechanics</span></div>
+          <div class="rrow"><div class="lbl">Draw to match<small>Keep drawing until a playable card</small></div><div class="toggle"></div></div>
+          <div class="rrow"><div class="lbl">Force play drawn card<small>Must play it if playable</small></div><div class="toggle on"></div></div>
+          <div class="rrow"><div class="lbl">Starting hand size</div><div class="stepper"><button>-</button><b>7</b><button>+</button></div></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="gh"><span>Special cards</span></div>
+          <div class="rrow"><div class="lbl">7-0 rule<small>7 swaps hands, 0 rotates all hands</small></div><div class="toggle on"></div></div>
+          <div class="rrow"><div class="lbl">Jump-in<small>Play identical card out of turn</small></div><div class="toggle"></div></div>
+        </div>
+
+        <div class="rgroup">
+          <div class="gh"><span>Win &amp; scoring</span></div>
+          <div class="rrow"><div class="lbl">Win condition</div>
+            <div class="seg" style="width:210px"><span class="on">First to empty</span><span>Points target</span></div></div>
+          <div class="rrow"><div class="lbl">Penalty for no "UNO" call<small>Cards drawn when caught</small></div><div class="stepper"><button>-</button><b>2</b><button>+</button></div></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="panel">
+          <h2>Room</h2>
+          <p class="sub">Share this code with friends</p>
+          <div class="roomcode"><b>QJ7K</b><button class="btn btn-ghost" style="margin-left:auto;padding:8px 12px;font-size:12px">Copy link</button></div>
+          <div class="field" style="margin-top:18px"><label>Your nickname</label><input class="input" value="Nam"></div>
+          <div class="field"><label>Max players</label><div class="seg"><span>4</span><span class="on">6</span><span>8</span></div></div>
+        </div>
+
+        <div class="panel">
+          <h2>Players <span class="tag" style="color:var(--muted);font-size:13px;font-weight:400">3 / 6</span></h2>
+          <div class="players">
+            <div class="prow"><div class="av r">N</div><div class="nm">Nam <span class="pill" style="background:rgba(244,196,48,.15);color:var(--accent);margin-left:4px">Host</span></div></div>
+            <div class="prow"><div class="av b">L</div><div class="nm">Linh</div><span class="tag">ready</span></div>
+            <div class="prow"><div class="av g">B</div><div class="nm">Bot Aria</div><span class="tag">&#129302; bot</span></div>
+            <div class="prow" style="opacity:.5;border-style:dashed"><div class="av k" style="color:#fff">+</div><div class="nm">Empty seat</div><span class="tag">add bot</span></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:18px">Start Game</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section class="screen" id="game">
+    <div class="game-grid">
+      <div class="table-wrap">
+        <div class="topbar">
+          <div class="brand" style="font-size:15px"><span class="card-mini r" style="width:24px;height:34px;font-size:11px">U</span> Room QJ7K</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="pill" style="background:rgba(244,196,48,.15);color:var(--accent)">House Rules</span>
+            <span class="pill" style="background:rgba(255,255,255,.1);color:#fff">&#8635; Clockwise</span>
+          </div>
+        </div>
+
+        <!-- opponents -->
+        <div class="seat turn" style="top:70px;left:50%;transform:translateX(-50%)">
+          <div class="av2 b">L</div><div class="nm2">Linh</div><div class="cnt">5 cards</div>
+          <div class="backs"><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i></div>
+        </div>
+        <div class="seat" style="top:230px;left:14px">
+          <div class="av2 g">A</div><div class="nm2">Bot Aria &#129302;</div><div class="cnt">3 cards</div>
+        </div>
+        <div class="seat" style="top:230px;right:14px">
+          <div class="av2 y">B</div><div class="nm2">Bot Rex &#129302;</div><div class="cnt">UNO!</div>
+        </div>
+
+        <!-- center -->
+        <div class="dirhint"></div>
+        <div class="center">
+          <div class="deck"><div class="pile">UNO</div><small>Draw - 58 left</small></div>
+          <div class="discard"><div class="top g">+2</div></div>
+        </div>
+
+        <!-- player hand -->
+        <div class="handbar"><button class="uno-btn">UNO!</button></div>
+        <div class="hand">
+          <div class="pc r">5</div>
+          <div class="pc g play">+2</div>
+          <div class="pc g">9</div>
+          <div class="pc b dim">3</div>
+          <div class="pc y dim">7</div>
+          <div class="pc k dim" style="color:#fff">+4</div>
+          <div class="pc r dim">&#9888;</div>
+        </div>
+      </div>
+
+      <!-- chat -->
+      <div class="chat">
+        <div class="ch">Room chat <span class="pill" style="background:rgba(42,157,74,.16);color:var(--green)">live</span></div>
+        <div class="body">
+          <div class="msg sys">Game started - House Rules preset</div>
+          <div class="msg sys">Bot Aria played a Skip on Nam</div>
+          <div class="msg"><b>Linh:</b> not the +2 again &#128557;</div>
+          <div class="msg"><b>Nam:</b> stack it back, easy</div>
+          <div class="msg sys">Bot Rex called UNO!</div>
+          <div class="msg"><b>Linh:</b> &#128064;</div>
+        </div>
+        <div class="emotes"><span>&#128514;</span><span>&#128525;</span><span>&#128545;</span><span>&#128556;</span><span>&#128079;</span><span>&#128293;</span><span>&#128064;</span></div>
+        <div class="inp"><input placeholder="Message room..."><button class="btn btn-primary" style="padding:9px 14px">Send</button></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(x=>x.classList.remove('show'));
+      t.classList.add('active');
+      document.getElementById(t.dataset.s).classList.add('show');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+  // toggle demo
+  document.querySelectorAll('.toggle').forEach(function(tg){tg.addEventListener('click',()=>tg.classList.toggle('on'));});
+  document.querySelectorAll('.seg span').forEach(function(s){s.addEventListener('click',function(){
+    this.parentNode.querySelectorAll('span').forEach(x=>x.classList.remove('on'));this.classList.add('on');});});
+  document.querySelectorAll('.preset .chip').forEach(function(c){c.addEventListener('click',function(){
+    document.querySelectorAll('.preset .chip').forEach(x=>x.classList.remove('on'));this.classList.add('on');});});
+</script>
+</body>
+</html>

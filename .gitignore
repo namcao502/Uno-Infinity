@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# build artifacts
+functions/lib/
+dist/
+*.tsbuildinfo
+
+# env files (App Hosting uses apphosting.yaml; keep the .example template)
+.env
+.env*.local
+
+# firebase
+.firebase/
+firebase-debug.log
+database-debug.log
+*.log
+
+# editor / os
+.DS_Store
+.vscode/
+.idea/

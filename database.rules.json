@@ -1,0 +1,44 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
+        "meta":    { ".write": false },
+        "seats":   { ".write": false },
+        "public":  { ".write": false },
+        "members": { ".write": false },
+        "participants": { ".write": false },
+        "presence": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['online','lastSeen'])"
+          }
+        },
+        "chat": {
+          "$msgId": {
+            ".write": "auth != null && !data.exists() && newData.child('uid').val() == auth.uid && root.child('rooms').child($roomId).child('members').child(auth.uid).exists()",
+            ".validate": "newData.hasChildren(['uid','name','kind','body','ts']) && newData.child('uid').isString() && newData.child('body').isString() && newData.child('body').val().length <= 280 && newData.child('ts').isNumber() && (newData.child('kind').val() == 'text' || newData.child('kind').val() == 'emote')"
+          }
+        }
+      }
+    },
+    "hands": {
+      "$roomId": {
+        "$uid": {
+          ".read": "auth != null && auth.uid == $uid",
+          ".write": false
+        }
+      }
+    },
+    "peek": {
+      "$roomId": {
+        "$uid": {
+          ".read": "auth != null && auth.uid == $uid",
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    },
+    "lobbies": { ".read": "auth != null", ".write": false },
+    "secure": { ".read": false, ".write": false }
+  }
+}
