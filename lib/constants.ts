@@ -132,6 +132,7 @@ export const STRINGS = {
   roundEnd: {
     gameOver: 'Game over',
     winnerDecided: 'Winner decided',
+    backToLobby: 'Back to lobby',
   },
   chat: {
     title: 'Room chat',

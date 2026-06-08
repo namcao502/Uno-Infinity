@@ -1,20 +1,34 @@
 'use client';
-import Link from 'next/link';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import type { RoomMeta, SeatRow } from '@/lib/hooks/useRoom';
-import { buttonVariants } from '@/components/ui/button';
+import { callReturnToLobby } from '@/lib/functions';
+import { Button } from '@/components/ui/button';
 import { STRINGS } from '@/lib/constants';
 
 interface RoundEndDialogProps {
+  roomId: string;
   meta: RoomMeta;
   seats: SeatRow[];
   winnerId: string | null;
 }
 
-export function RoundEndDialog({ meta, seats, winnerId }: RoundEndDialogProps) {
+export function RoundEndDialog({ roomId, meta, seats, winnerId }: RoundEndDialogProps) {
+  const [busy, setBusy] = useState(false);
+
   if (meta.phase !== 'gameOver') return null;
 
   const winner = seats.find((s) => s.id === winnerId);
   const standings = [...seats].sort((a, b) => a.handCount - b.handCount);
+  const backToLobby = async () => {
+    setBusy(true);
+    try {
+      await callReturnToLobby({ roomId });
+    } catch (e) {
+      toast.error((e as { message?: string })?.message ?? 'Could not return to lobby');
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -30,7 +44,9 @@ export function RoundEndDialog({ meta, seats, winnerId }: RoundEndDialogProps) {
           ))}
         </ul>
         <div className="mt-5 flex justify-center">
-          <Link href="/" className={buttonVariants({ variant: 'outline' })}>{STRINGS.common.backToHome}</Link>
+          <Button disabled={busy} variant="outline" onClick={backToLobby}>
+            {STRINGS.roundEnd.backToLobby}
+          </Button>
         </div>
       </div>
     </div>

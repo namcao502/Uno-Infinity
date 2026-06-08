@@ -1,5 +1,5 @@
-import { isBlack, isDraw, type Card, type CardColor } from './cards';
-import { topCard, nextActiveIndex, activePlayers, MAX_HAND, type GameState, type PlayerState, type PlayerSeed, type LogEntry } from './state';
+import { isBlack, isDraw, type Card } from './cards';
+import { topCard, nextActiveIndex, activePlayers, MAX_HAND, type GameState, type PlayerState, type PlayerSeed, type LogEntry, type PendingDraw } from './state';
 import { isPlayable } from './rules';
 import { classifySet, type Combo } from './combos';
 import { createRng, shuffle } from './rng';
@@ -18,6 +18,10 @@ export const clone = (s: GameState): GameState => ({
 
 /** Keep the game history bounded so the serialized state stays small. */
 const LOG_MAX = 50;
+
+const drawSource = (c: Card): PendingDraw['source'] => isBlack(c) ? 'blackDraw' : 'colorDraw';
+const drawActiveColor = (c: Card, move: Extract<Move, { type: 'play' }>): Card['color'] =>
+  isBlack(c) ? (move.chosenColor ?? 'red') : c.color;
 
 /** Append a history entry (auto-assigns seq) and drop the oldest past the cap. */
 function pushLog(s: GameState, e: Omit<LogEntry, 'seq'>): void {
@@ -157,6 +161,8 @@ function applyPlay(s: GameState, move: Extract<Move, { type: 'play' }>): GameSta
     if (combo.isX2) {
       s.pending.total += (combo.draw!.value ?? 0) * 2;     // RD4: double the attached draw
       s.pending.topValue = combo.draw!.value ?? 0;
+      s.pending.source = drawSource(combo.draw!);
+      s.currentColor = drawActiveColor(combo.draw!, move);
       advance(s, 1);
     } else if (combo.lead.kind === 'mult') {               // RD4: x2 alone doubles the current stack top (+= topValue)
       s.pending.total += s.pending.topValue;               // topValue unchanged: no new + card was played
@@ -170,6 +176,8 @@ function applyPlay(s: GameState, move: Extract<Move, { type: 'play' }>): GameSta
     } else {                                               // single draw extends the stack
       s.pending.total += combo.lead.value ?? 0;
       s.pending.topValue = combo.lead.value ?? 0;
+      s.pending.source = drawSource(combo.lead);
+      s.currentColor = drawActiveColor(combo.lead, move);
       advance(s, 1);                                        // duel-aware advance toggles the duelist
     }
     return checkEnd(s);
@@ -184,7 +192,8 @@ function applyPlay(s: GameState, move: Extract<Move, { type: 'play' }>): GameSta
   // Draw card with no pending: open a new stack.
   if (isDraw(combo.lead)) {
     s.pending = { total: combo.lead.value ?? 0, topValue: combo.lead.value ?? 0,
-      source: isBlack(combo.lead) ? 'blackDraw' : 'colorDraw' };
+      source: drawSource(combo.lead) };
+    s.currentColor = drawActiveColor(combo.lead, move);
     advance(s, 1);
     return checkEnd(s);
   }
@@ -310,7 +319,7 @@ function applyEffect(s: GameState, combo: Combo, move: Extract<Move, { type: 'pl
 function applyRecycle(s: GameState, move: Extract<Move, { type: 'play' }>): void {
   const copied = s.discardPile[s.discardPile.length - 2];
   if (isDraw(copied)) {
-    s.pending = { total: copied.value ?? 0, topValue: copied.value ?? 0, source: isBlack(copied) ? 'blackDraw' : 'colorDraw' };
+    s.pending = { total: copied.value ?? 0, topValue: copied.value ?? 0, source: drawSource(copied) };
     s.currentColor = isBlack(copied) ? (move.chosenColor ?? s.currentColor) : copied.color;
     s.chainId++;                                            // recycle copying a draw opens a fresh chain
     advance(s, 1); return;

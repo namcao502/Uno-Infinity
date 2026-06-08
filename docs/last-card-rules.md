@@ -80,8 +80,10 @@ true:
 - it is a **number** equal in value to the number on top of the pile (color does not matter);
 - it is a **non-number** card of the **same kind** as the card on top (e.g. a Skip on a Skip).
 
-**Choosing a color.** Most black cards keep the current color. Four black cards make you **pick the new
-active color** when you play them: **Wild, Draw-until-color, +4T Duel, ++4 Bomb**.
+**Choosing a color.** Most black cards keep the current color. Five black card groups make you **pick
+the new active color** when you play them: **Black +draws, Wild, Draw-until-color, +4T Duel, ++4 Bomb**.
+For a Black +draw, your chosen color is the color the next player must follow after the stack is drawn
+or otherwise resolved.
 
 **Color lock.** Playing a run or three-consecutive-pairs (Section 6) locks the color: the next player
 must match the locked color. Black cards still ignore the lock.
@@ -126,8 +128,11 @@ play any ordinary card.
 
 - **Draw the total.** Take the full running total into your hand. The stack clears and your turn ends.
 - **Stack another +draw.** Its value must be **greater than or equal to the current top value**. Its
-  value is added to the total, it becomes the new top value, and the stack passes on. (So +4 can go on
-  +2 or +4, but +2 cannot go on +4.)
+  value is added to the total, it becomes the new top value, and the stack passes on. Colored +draws
+  can stack on colored +draws across colors if the value is equal or higher: Red +2 -> Blue +2 -> Blue
+  +4 is legal. Black +draws can stack on either colored or black +draws if their value is equal or
+  higher. If the current top +draw is **Black**, the next +draw must also be **Black**; for example, a
+  Red +4 cannot be stacked on a Black +4.
 - **Play x2.** See below.
 - **Play /2.** The total is **halved (rounded down)**, **you** draw that many, and the stack clears.
 - **Shield** - pass the entire stack, unchanged, to the **next** player. (Not allowed as your last card.)

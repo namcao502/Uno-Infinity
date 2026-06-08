@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  isPlayable, classifySet, type Card, type CardColor, type CardKind, type Move,
+  canStackDraw, isPlayable, classifySet, type Card, type CardColor, type CardKind, type Move,
 } from '@last-card/engine';
 import { useRoom } from '@/lib/hooks/useRoom';
 import { useHand } from '@/lib/hooks/useHand';
@@ -23,7 +23,8 @@ import { CARD_COLORS, TIMING, STRINGS } from '@/lib/constants';
 
 const WILD_COLORS: CardColor[] = ['red', 'green', 'blue', 'yellow'];
 const TARGETED = new Set<CardKind>(['duel', 'eye', 'swap', 'steal', 'gift']);
-const needsColor = (k: CardKind) => k === 'wild' || k === 'drawUntilColor' || k === 'duel' || k === 'bomb';
+const needsColor = (c: Card) => c.kind === 'wild' || c.kind === 'drawUntilColor' || c.kind === 'duel' || c.kind === 'bomb'
+  || (c.kind === 'draw' && c.color === 'black');
 
 export function GameTable({ roomId }: { roomId: string }) {
   const { meta, seats, pub, presence } = useRoom(roomId);
@@ -76,7 +77,7 @@ export function GameTable({ roomId }: { roomId: string }) {
   const clientPlayable = (c: Card): boolean => {
     if (drawnPlayableCardId) return c.id === drawnPlayableCardId; // after a draw, only the drawn card may be played
     if (pub.phase === 'bombResponse') return c.kind === 'shield' || c.kind === 'counter'; // respond by selecting a shield/counter
-    if (pub.pending) return (c.kind === 'draw' && (c.value ?? 0) >= pub.pending.topValue) || c.kind === 'div' || c.kind === 'mult' || c.kind === 'shield' || c.kind === 'counter';
+    if (pub.pending) return canStackDraw(pub.pending, c) || c.kind === 'div' || c.kind === 'mult' || c.kind === 'shield' || c.kind === 'counter';
     return isPlayable(c, pub.discardTop, pub.currentColor, pub.colorLocked);
   };
 
@@ -91,7 +92,7 @@ export function GameTable({ roomId }: { roomId: string }) {
     const res = classifySet(cards);
     if (!res.ok) { toast.error(res.reason); return; }
     const lead = res.combo.lead;
-    if (needsColor(lead.kind) || TARGETED.has(lead.kind) || lead.kind === 'gift') {
+    if (needsColor(lead) || TARGETED.has(lead.kind) || lead.kind === 'gift') {
       setDraft({ cardIds: selected, lead });
       return;
     }
@@ -101,7 +102,7 @@ export function GameTable({ roomId }: { roomId: string }) {
   // finalize a drafted play once all required inputs are present
   const finalizeDraft = (patch: Partial<NonNullable<typeof draft>>) => {
     const d = { ...draft!, ...patch };
-    const needColor = needsColor(d.lead.kind) && !d.chosenColor;
+    const needColor = needsColor(d.lead) && !d.chosenColor;
     const needTarget = TARGETED.has(d.lead.kind) && !d.targetId;
     const needGift = d.lead.kind === 'gift' && !(d as { giftCardId?: string }).giftCardId;
     if (needColor || needTarget || needGift) { setDraft(d); return; }
@@ -116,7 +117,7 @@ export function GameTable({ roomId }: { roomId: string }) {
     <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-6 lg:grid-cols-[1fr_300px]">
       <div className="space-y-4">
         <ConnectionBanner eliminated={!!eliminated} />
-        <RoundEndDialog meta={meta} seats={seats} winnerId={pub.winnerId} />
+        <RoundEndDialog roomId={roomId} meta={meta} seats={seats} winnerId={pub.winnerId} />
 
         {/* Top bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-4 py-2 text-sm">
@@ -267,14 +268,14 @@ export function GameTable({ roomId }: { roomId: string }) {
       {/* Overlays: color / target / gift pickers */}
       {draft && (
         <Overlay onClose={() => setDraft(null)}>
-          {needsColor(draft.lead.kind) && !draft.chosenColor && (
+          {needsColor(draft.lead) && !draft.chosenColor && (
             <Picker title="Choose a color">
               {WILD_COLORS.map((c) => (
                 <Button key={c} className="capitalize text-white" style={{ backgroundColor: colorHex(c) }} onClick={() => finalizeDraft({ chosenColor: c })}>{c}</Button>
               ))}
             </Picker>
           )}
-          {(!needsColor(draft.lead.kind) || draft.chosenColor) && TARGETED.has(draft.lead.kind) && !draft.targetId && (
+          {(!needsColor(draft.lead) || draft.chosenColor) && TARGETED.has(draft.lead.kind) && !draft.targetId && (
             <Picker title="Choose a player">
               {activeOpponents.map((o) => (
                 <Button key={o.id} variant="outline" onClick={() => finalizeDraft({ targetId: o.id })}>{o.name}</Button>

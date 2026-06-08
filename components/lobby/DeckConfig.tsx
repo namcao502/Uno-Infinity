@@ -1,7 +1,11 @@
 'use client';
-import { DEFAULT_CONFIG, deckTotal, type RuleConfig } from '@last-card/engine';
+import { DEFAULT_CONFIG, deckTotal, type Card, type RuleConfig } from '@last-card/engine';
+import { GameCard, cardLabel } from '@/components/game/GameCard';
 import { CONFIG_FIELDS, getPath, setPath, type ConfigField } from '@/lib/config-fields';
+import { CONFIG_FIELD_CARDS } from '@/lib/card-examples';
+import { cardInfo } from '@/lib/card-info';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const GROUPS = ['Table', 'Colored cards', 'Black draws', 'Math & defense', 'Special cards', 'Targeted cards'] as const;
 
@@ -14,12 +18,62 @@ const CHAOS: RuleConfig = setPath(setPath(DEFAULT_CONFIG, 'startingHandSize', 10
 
 interface DeckConfigProps { config: RuleConfig; onChange: (c: RuleConfig) => void; disabled?: boolean }
 
+function CardSamples({ cards }: { cards: Card[] }) {
+  if (!cards.length) return null;
+  return (
+    <span className="flex h-14 shrink-0 items-center -space-x-4">
+      {cards.slice(0, 3).map((card) => (
+        <span key={card.id} className="scale-75">
+          <GameCard card={card} small />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function FieldDetails({ field }: { field: ConfigField }) {
+  const cards = CONFIG_FIELD_CARDS[field.path] ?? [];
+  if (!cards.length) return <span className="text-sm">{field.label}</span>;
+  const details = cards.map((card) => cardInfo(card));
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span className="flex min-w-0 cursor-help items-center gap-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-lc-yellow" />
+        }
+        aria-label={`${field.label} card details`}
+        tabIndex={0}
+      >
+        <CardSamples cards={cards} />
+        <span className="min-w-0 truncate text-sm">{field.label}</span>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="start" className="max-w-[22rem] items-start gap-3 p-3 text-left">
+        <span className="flex shrink-0 -space-x-2">
+          {cards.map((card) => (
+            <GameCard key={card.id} card={card} small />
+          ))}
+        </span>
+        <span className="block space-y-1">
+          <span className="block text-sm font-bold">{field.label}</span>
+          <span className="block text-xs leading-snug opacity-90">
+            {details.map((info) => info.name).join(' / ')}
+          </span>
+          <span className="block text-xs leading-snug opacity-80">
+            {details[0]?.effect}
+          </span>
+          <span className="sr-only">{cards.map(cardLabel).join(', ')}</span>
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function Stepper({ field, value, onChange, disabled }: { field: ConfigField; value: number; onChange: (v: number) => void; disabled?: boolean }) {
   const min = field.min ?? 0;
   const max = field.max ?? 99;
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2">
-      <span className="text-sm">{field.label}</span>
+    <div className="flex min-h-[4.5rem] items-center justify-between gap-2 rounded-md border bg-card px-3 py-2">
+      <FieldDetails field={field} />
       <div className="flex items-center gap-2">
         <Button size="icon-xs" variant="outline" disabled={disabled || value <= min}
           aria-label={`decrease ${field.label}`} onClick={() => onChange(Math.max(min, value - 1))}>-</Button>
@@ -38,7 +92,8 @@ export function DeckConfig({ config, onChange, disabled }: DeckConfigProps) {
   const set = (path: string, v: unknown) => onChange(setPath(config, path, v));
 
   return (
-    <div className="space-y-5">
+    <TooltipProvider>
+      <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-muted-foreground">Presets:</span>
         <Button size="sm" variant="outline" disabled={disabled} onClick={() => onChange(DEFAULT_CONFIG)}>Default</Button>
@@ -76,6 +131,7 @@ export function DeckConfig({ config, onChange, disabled }: DeckConfigProps) {
           </section>
         );
       })}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

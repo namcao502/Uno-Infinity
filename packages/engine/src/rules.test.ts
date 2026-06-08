@@ -51,11 +51,50 @@ describe('isMoveLegal (Infinity)', () => {
       [cardOf({ id: 'm', color: 'black', kind: 'mult', value: 2 }), cardOf({ id: 'k', value: 2 })]);
     expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['m'] }).ok).toBe(true);
   });
+  it('black draw cards require a chosen color', () => {
+    const s = mk({}, [
+      cardOf({ id: 'd', color: 'black', kind: 'draw', value: 4 }),
+      cardOf({ id: 'k', value: 2 }),
+    ]);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['d'] }).ok).toBe(false);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['d'], chosenColor: 'green' }).ok).toBe(true);
+  });
   it('a draw stacks only if value >= pending top (RD6)', () => {
     const s = mk({ pending: { total: 6, topValue: 6, source: 'blackDraw' } },
       [cardOf({ id: 'd', color: 'black', kind: 'draw', value: 4 }), cardOf({ id: 'd2', color: 'black', kind: 'draw', value: 8 })]);
     expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['d'] }).ok).toBe(false); // 4 < 6
-    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['d2'] }).ok).toBe(true);  // 8 >= 6
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['d2'], chosenColor: 'green' }).ok).toBe(true);  // 8 >= 6
+  });
+  it('a colored draw cannot stack on a black draw', () => {
+    const s = mk({ pending: { total: 4, topValue: 4, source: 'blackDraw' } }, [
+      cardOf({ id: 'color4', color: 'red', kind: 'draw', value: 4 }),
+      cardOf({ id: 'black4', color: 'black', kind: 'draw', value: 4 }),
+      cardOf({ id: 'm', color: 'black', kind: 'mult', value: 2 }),
+      cardOf({ id: 'k', value: 2 }),
+    ]);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['color4'] }).ok).toBe(false);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['black4'] }).ok).toBe(false);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['black4'], chosenColor: 'green' }).ok).toBe(true);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['color4', 'm'] }).ok).toBe(false);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['black4', 'm'] }).ok).toBe(false);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['black4', 'm'], chosenColor: 'green' }).ok).toBe(true);
+  });
+  it('colored and black draws can stack on a colored draw if the value qualifies', () => {
+    const s = mk({ pending: { total: 4, topValue: 4, source: 'colorDraw' } },
+      [cardOf({ id: 'color4', color: 'red', kind: 'draw', value: 4 }), cardOf({ id: 'black4', color: 'black', kind: 'draw', value: 4 })]);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['color4'] }).ok).toBe(true);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['black4'] }).ok).toBe(false);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['black4'], chosenColor: 'green' }).ok).toBe(true);
+  });
+  it('colored draws may stack across colors by equal or increasing value', () => {
+    const s = mk({ pending: { total: 2, topValue: 2, source: 'colorDraw' } }, [
+      cardOf({ id: 'blue2', color: 'blue', kind: 'draw', value: 2 }),
+      cardOf({ id: 'blue4', color: 'blue', kind: 'draw', value: 4 }),
+      cardOf({ id: 'blueLow', color: 'blue', kind: 'draw', value: 1 }),
+    ]);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['blue2'] }).ok).toBe(true);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['blue4'] }).ok).toBe(true);
+    expect(isMoveLegal(s, { type: 'play', playerId: 'p1', cardIds: ['blueLow'] }).ok).toBe(false);
   });
   it('shield/counter need a pending and a held shield card (not the last card)', () => {
     const noShield = mk({ pending: { total: 4, topValue: 4, source: 'blackDraw' } }, [cardOf({ id: 'a', value: 5 })]);

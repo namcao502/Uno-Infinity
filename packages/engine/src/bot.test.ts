@@ -48,8 +48,14 @@ describe('botChooseMove', () => {
     const withDraw = mk({ pending }, [C({ id: 'd6', color: 'black', kind: 'draw', value: 6 })]);
     const m = botChooseMove(withDraw, 'b1');
     expect(m.type === 'play' && m.cardIds).toEqual(['d6']);
+    expect(m.type === 'play' && m.chosenColor).toBeTruthy();
     const noDraw = mk({ pending }, [C({ id: 'n', color: 'green', value: 9 })]);
     expect(botChooseMove(noDraw, 'b1').type).toBe('draw');
+  });
+  it('does not stack a colored draw onto a black draw', () => {
+    const pending: PendingDraw = { total: 4, topValue: 4, source: 'blackDraw' };
+    const s = mk({ pending }, [C({ id: 'color4', color: 'red', kind: 'draw', value: 4 })]);
+    expect(botChooseMove(s, 'b1').type).toBe('draw');
   });
   it('plays x2 alone against a stack when no draw qualifies (RD4)', () => {
     const pending: PendingDraw = { total: 6, topValue: 6, source: 'blackDraw' };

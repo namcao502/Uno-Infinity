@@ -6,10 +6,10 @@ import { cardInfo } from '@/lib/card-info';
 import { CARD_COLORS, COLORS, TIMING } from '@/lib/constants';
 
 const GLYPH: Partial<Record<CardKind, string>> = {
-  mult: 'x2', div: '÷2', skip: '⊘', playAgain: '↻', minus: '−',
-  duel: '⚔', bomb: '\u{1f4a3}', recycle: '♺', eye: '\u{1f441}', swap: '⇄',
-  steal: '\u{1f977}', gift: '\u{1f381}', drawUntilColor: '\u{1f3af}', shield: '\u{1f6e1}',
-  counter: '\u{1f300}', wild: '★',
+  mult: 'x2', div: '/2', skip: 'SK', playAgain: 'AG', minus: '-',
+  duel: 'DU', bomb: 'BM', recycle: 'RC', eye: 'EY', swap: 'SW',
+  steal: 'ST', gift: 'GF', drawUntilColor: 'COL', shield: 'SH',
+  counter: 'CT', wild: '*',
 };
 
 export function cardLabel(card: Card): string {

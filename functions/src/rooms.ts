@@ -12,7 +12,7 @@ function genCode(): string {
   return Array.from({ length: 4 }, () => A[Math.floor(Math.random() * A.length)]).join('');
 }
 
-type SeatMap = Record<string, { isAudience?: boolean; isBot?: boolean; seatIndex?: number; status?: string; handCount?: number }>;
+type SeatMap = Record<string, { name?: string; isAudience?: boolean; isBot?: boolean; seatIndex?: number; status?: string; handCount?: number }>;
 
 /** Count only active-eligible (non-audience) seats - the figure capped by maxPlayers. */
 function playerSeatCount(seats: SeatMap): number {
@@ -40,7 +40,17 @@ async function syncLobby(roomId: string): Promise<void> {
     await db.ref(`lobbies/${roomId}`).remove();
     return;
   }
-  await db.ref(`lobbies/${roomId}`).update({ players, phase: meta.phase });
+  const hostSeat = seats[meta.hostId];
+  await db.ref(`lobbies/${roomId}`).update({
+    code: meta.code ?? roomId,
+    hostName: hostSeat?.name ?? 'Host',
+    players,
+    maxPlayers: meta.maxPlayers,
+    phase: meta.phase,
+    createdAt: meta.createdAt ?? Date.now(),
+    deckTotal: deckTotal(meta.config.deck),
+    startingHandSize: meta.config.startingHandSize,
+  });
 }
 
 /**
@@ -192,6 +202,36 @@ export const becomeAudience = onCall(async (req) => {
   }
   await db.ref(`rooms/${roomId}/seats/${uid}`).update({ isAudience: true, status: 'out', turn: false });
   await db.ref(`hands/${roomId}/${uid}`).remove();
+  await syncLobby(roomId);
+  return { ok: true };
+});
+
+export const returnToLobby = onCall(async (req) => {
+  const uid = requireHuman(req.auth);
+  const roomId = String(req.data?.roomId ?? '');
+  const meta = (await db.ref(`rooms/${roomId}/meta`).get()).val();
+  if (!meta) throw new HttpsError('not-found', 'Room not found');
+  if (meta.phase !== 'gameOver') throw new HttpsError('failed-precondition', 'Game is not finished');
+  const isMember = (await db.ref(`rooms/${roomId}/members/${uid}`).get()).exists();
+  if (!isMember) throw new HttpsError('permission-denied', 'You are not in this room');
+
+  const seats = ((await db.ref(`rooms/${roomId}/seats`).get()).val() ?? {}) as SeatMap;
+  const updates: Record<string, unknown> = {
+    'meta/phase': 'lobby',
+    public: null,
+  };
+  for (const [id, seat] of Object.entries(seats)) {
+    updates[`seats/${id}/handCount`] = 0;
+    updates[`seats/${id}/turn`] = false;
+    updates[`seats/${id}/status`] = seat.isAudience ? 'out' : 'active';
+  }
+
+  await Promise.all([
+    db.ref(`rooms/${roomId}`).update(updates),
+    db.ref(`secure/${roomId}`).remove(),
+    db.ref(`hands/${roomId}`).remove(),
+    db.ref(`peek/${roomId}`).remove(),
+  ]);
   await syncLobby(roomId);
   return { ok: true };
 });

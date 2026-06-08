@@ -1,12 +1,25 @@
 import { isBlack, isDraw, type Card, type CardColor } from './cards';
-import { topCard, type GameState } from './state';
+import { topCard, type GameState, type PendingDraw } from './state';
 import { classifySet } from './combos';
 import type { Move, LegalityResult } from './types';
 
 const TARGETED = new Set<Card['kind']>(['duel', 'eye', 'swap', 'steal', 'gift']);
 /** Black cards that require the player to choose the active color (RD1). */
 function needsColor(card: Card): boolean {
-  return card.kind === 'wild' || card.kind === 'drawUntilColor' || card.kind === 'duel' || card.kind === 'bomb';
+  return card.kind === 'wild' || card.kind === 'drawUntilColor' || card.kind === 'duel' || card.kind === 'bomb'
+    || (card.kind === 'draw' && isBlack(card));
+}
+
+export function canStackDraw(pending: PendingDraw, card: Card): boolean {
+  return isDraw(card)
+    && (card.value ?? 0) >= pending.topValue
+    && (pending.source !== 'blackDraw' || isBlack(card));
+}
+
+function stackDrawReason(pending: PendingDraw, card: Card): string {
+  if ((card.value ?? 0) < pending.topValue) return 'Draw value too low to stack';
+  if (pending.source === 'blackDraw' && !isBlack(card)) return 'Only black draw cards can stack on a black draw';
+  return 'Draw card cannot stack';
 }
 
 /** Pure matching (no pending logic). Pending rules are enforced in isMoveLegal. */
@@ -28,7 +41,7 @@ export function getPlayableCards(state: GameState, playerId: string): Card[] {
     return c && isPlayable(c, top, state.currentColor, state.colorLocked) ? [c] : [];
   }
   if (state.pending)
-    return p.hand.filter(c => (isDraw(c) && (c.value ?? 0) >= state.pending!.topValue) || c.kind === 'div' || c.kind === 'mult');
+    return p.hand.filter(c => canStackDraw(state.pending!, c) || c.kind === 'div' || c.kind === 'mult');
   return p.hand.filter(c => isPlayable(c, top, state.currentColor, state.colorLocked));
 }
 
@@ -78,11 +91,15 @@ export function isMoveLegal(state: GameState, move: Move): LegalityResult {
     return { ok: false, reason: 'You cannot finish on a black card' };
 
   if (state.pending) {
-    if (c.isX2) return (c.draw!.value ?? 0) >= state.pending.topValue
-      ? { ok: true } : { ok: false, reason: 'Draw value too low to stack' };
+    if (c.isX2) {
+      if (!canStackDraw(state.pending, c.draw!)) return { ok: false, reason: stackDrawReason(state.pending, c.draw!) };
+      return needsColor(c.draw!) && !move.chosenColor ? { ok: false, reason: 'Choose a color' } : { ok: true };
+    }
     if (c.kind === 'single' && c.lead.kind === 'mult') return { ok: true }; // x2 alone: doubles the current stack top
-    if (c.kind === 'single' && isDraw(c.lead)) return (c.lead.value ?? 0) >= state.pending.topValue
-      ? { ok: true } : { ok: false, reason: 'Draw value too low to stack' };
+    if (c.kind === 'single' && isDraw(c.lead)) {
+      if (!canStackDraw(state.pending, c.lead)) return { ok: false, reason: stackDrawReason(state.pending, c.lead) };
+      return needsColor(c.lead) && !move.chosenColor ? { ok: false, reason: 'Choose a color' } : { ok: true };
+    }
     if (c.kind === 'single' && c.lead.kind === 'div') return { ok: true };
     return { ok: false, reason: 'Only a draw, x2, or /2 may be played on a stack' };
   }

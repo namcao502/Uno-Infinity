@@ -56,7 +56,8 @@ export interface Card {
 the player to choose the new active color when playing it (same as `wild`). The move carries `chosenColor`.
 
 **RD2 - `draw` unifies colored and black draw cards.** `kind:'draw'`, `value` = amount,
-`color` in {red,green,blue,yellow} for colored or `'black'` for black draws.
+`color` in {red,green,blue,yellow} for colored or `'black'` for black draws. A black draw requires
+`chosenColor`; that color becomes the active color after the draw stack is resolved.
 
 ---
 
@@ -137,8 +138,10 @@ contribution. Example: pending 6 (from +2,+4); player plays [+4, x2] -> adds 4*2
 `pending.total` (round down), that player draws the result, the stack clears, turn passes. Example:
 pending 6 -> play /2 -> draw 3.
 
-**RD6 - Draw stacking order.** A draw card (colored or black) may be played onto a pending stack only
-if its `value >= pending.topValue`. Colored and black draws may both extend a stack (cross-type allowed).
+**RD6 - Draw stacking order.** A draw card may be played onto a pending stack only if its
+`value >= pending.topValue`. Colored draws may stack on colored draws across colors, e.g.
+Red +2 -> Blue +2 -> Blue +4. Black draws may stack on colored or black draws, but once the current
+top +draw is black, only black +draws may extend it.
 
 **RD7 - Shield / Counter (on your turn).** Playable only when a `pending` stack is on you (your turn):
 `shield` moves the whole `pending` to the next player (you draw nothing, turn passes to them with the

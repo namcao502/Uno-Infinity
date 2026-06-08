@@ -1,11 +1,12 @@
-import { isBlack, isDraw, type Card, type CardColor } from './cards';
-import { getPlayableCards } from './rules';
+import { isBlack, type Card, type CardColor } from './cards';
+import { canStackDraw, getPlayableCards } from './rules';
 import { type GameState, type PlayerState } from './state';
 import type { Move } from './types';
 
 const NON_WILD: Exclude<CardColor, 'black'>[] = ['red', 'green', 'blue', 'yellow'];
 const TARGETED = new Set<Card['kind']>(['duel', 'eye', 'swap', 'steal', 'gift']);
-const needsColor = (c: Card) => c.kind === 'wild' || c.kind === 'drawUntilColor' || c.kind === 'duel' || c.kind === 'bomb';
+const needsColor = (c: Card) => c.kind === 'wild' || c.kind === 'drawUntilColor' || c.kind === 'duel' || c.kind === 'bomb'
+  || (c.kind === 'draw' && isBlack(c));
 
 function bestColor(hand: Card[]): CardColor {
   const counts: Record<string, number> = { red: 0, green: 0, blue: 0, yellow: 0 };
@@ -29,7 +30,7 @@ export function botChooseMove(state: GameState, botId: string): Move {
 
   // Facing a draw stack: stack a draw (smallest that qualifies), else shield/counter, else draw.
   if (state.pending) {
-    const stackable = me.hand.filter(c => isDraw(c) && (c.value ?? 0) >= state.pending!.topValue)
+    const stackable = me.hand.filter(c => canStackDraw(state.pending!, c))
       .sort((a, b) => (a.value ?? 0) - (b.value ?? 0))[0];
     if (stackable) {
       const m: Extract<Move, { type: 'play' }> = { type: 'play', playerId: botId, cardIds: [stackable.id] };
