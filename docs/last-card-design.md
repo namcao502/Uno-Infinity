@@ -1,9 +1,9 @@
 # Last Card - Engine Design & Resolved Rules
 
 > Source ruleset: `docs/last-card-rules.md` (Vietnamese). This document is the engineering
-> interpretation that the implementation plan will be built on. It REPLACES the classic ruleset.
-> Each "RD#" below is a resolved decision for an ambiguous source rule - review and correct before
-> the plan tasks are generated.
+> interpretation, reconciled with the implemented engine in `packages/engine/src`. It REPLACES the
+> classic ruleset. Each "RD#" below is a resolved decision for an ambiguous source rule; the types and
+> snippets mirror the engine source - keep them in sync when the engine changes.
 
 ## Scope (confirmed)
 - Last Card **replaces** the classic game. Infra (Next.js, Firebase, Auth, RTDB, Cloud Functions
@@ -29,7 +29,7 @@ export type CardKind =
   | 'skip'          // colored: next player loses a turn
   | 'minus'         // colored: optionally discard chosen same-color cards from hand
   // black / colorless
-  | 'mult'          // x2  : double the attached draw card's contribution (played WITH a draw)
+  | 'mult'          // x2  : double a draw on the stack (with a draw card, or alone - RD4)
   | 'div'           // /2  : halve the pending draw, then draw it
   | 'duel'          // +4T : 1v1 duel
   | 'bomb'          // ++4 : all other players draw 4
@@ -48,7 +48,7 @@ export interface Card {
   id: string;
   color: CardColor;       // 'black' for all colorless kinds
   kind: CardKind;
-  value: number | null;   // number: 0-9; draw: amount; reverseDraw: 4|10; mult/div: 2; else null
+  value: number | null;   // number: 0-10; draw: amount; reverseDraw: 4|10; mult/div: 2; else null (never undefined)
 }
 ```
 
@@ -57,39 +57,56 @@ the player to choose the new active color when playing it (same as `wild`). The 
 
 **RD2 - `draw` unifies colored and black draw cards.** `kind:'draw'`, `value` = amount,
 `color` in {red,green,blue,yellow} for colored or `'black'` for black draws. A black draw requires
-`chosenColor`; that color becomes the active color after the draw stack is resolved.
+`chosenColor`; that color becomes the active color when the card is played (and persists after the
+draw stack resolves).
 
 ---
 
 ## State model
 
 ```ts
-export type GamePhase = 'playing' | 'duel' | 'bombResponse' | 'roundEnd' | 'gameOver';
+export type GamePhase = 'playing' | 'duel' | 'bombResponse' | 'gameOver';  // single round; no 'roundEnd'
+export const MAX_HAND = 30;       // hand.length > 30 -> eliminated (RD20)
+
+export interface PendingDraw {
+  total: number;                 // accumulated cards the resolver must draw
+  topValue: number;              // value of the most-recent draw card (for stacking-order checks)
+  source: 'colorDraw' | 'blackDraw'; // for matching rules
+}
+export interface PendingUntil { color: CardColor }   // a draw-until-color threat (RD17)
+export interface DuelState {
+  challengerId: string;          // who played +4T
+  opponentId: string;            // the targeted player
+  activeId: string;              // whose turn within the duel
+}
 export interface BombResponse {
   bomberId: string;          // who played ++4
   pending: string[];         // active player ids still to respond, in seat order
   bomberDraw: number;        // accumulated cards the bomber draws (4 per counter)
   endColor: CardColor;       // color the bomber chose, applied after resolution
 }
-export interface PendingDraw {
-  total: number;                 // accumulated cards the resolver must draw
-  topValue: number;              // value of the most-recent draw card (for stacking-order checks)
-  source: 'colorDraw' | 'blackDraw'; // for matching rules
-}
-export interface DuelState {
-  challengerId: string;          // who played +4T
-  opponentId: string;            // the targeted player
-  activeId: string;              // whose turn within the duel
-}
-export const MAX_HAND = 30;       // hand.length > 30 -> eliminated (RD20)
 export interface PlayerState {
   id: string; name: string; isBot: boolean; connected: boolean;
   status: 'active' | 'out';      // 'out' = eliminated (hand exceeded MAX_HAND), now audience
-  hand: Card[]; score: number;
+  hand: Card[];                  // no per-player score: win is fixed (empty hand / last standing)
 }
+
+/** One granular history entry; `text` is a verb phrase WITHOUT the actor name (the UI prefixes it). */
+export interface LogEntry {
+  seq: number;                   // unique monotonic id -> React key / ordering
+  actorId: string; actorName: string;
+  kind: 'play' | 'draw' | 'shield' | 'counter' | 'skip' | 'eliminate' | 'win' | 'system';
+  text: string;
+  cards?: Card[];                // cards played (kind 'play')
+  drawCount?: number;            // cards drawn (kind 'draw')
+  stackId?: number;              // present -> part of a draw-stack chain (grouped in the UI)
+  detail?: boolean;              // an indented consequence sub-line (no actor name / glyphs)
+  chosenColor?: CardColor;       // a color the play set/chose -> UI shows a color chip
+}
+
 export interface GameState {
   phase: GamePhase;
-  config: RuleConfig;            // deck composition + optional toggles (below)
+  config: RuleConfig;            // deck composition + settings (below)
   players: PlayerState[];
   drawPile: Card[];
   discardPile: Card[];
@@ -98,12 +115,16 @@ export interface GameState {
   turnIndex: number;
   direction: 1 | -1;
   pending: PendingDraw | null;   // active draw stack, or null
+  pendingUntil: PendingUntil | null; // a draw-until-color threat the player on turn must answer (RD17)
   duel: DuelState | null;        // non-null only in phase 'duel'
   bombResponse: BombResponse | null; // non-null only in phase 'bombResponse'
   goAgain: boolean;              // true after playAgain: same player continues, color-restricted
+  drawnPlayable: { playerId: string; cardId: string } | null; // just-drawn playable card: play it or draw again to keep (RD21)
   winnerId: string | null;
   seed: string;
-  log: string;
+  log: LogEntry[];               // granular history, bounded (LOG_MAX in moves.ts)
+  chainId: number;               // bumped when a draw stack opens; ties chain entries together
+  eventSeq: number;              // next LogEntry.seq to assign
 }
 ```
 
@@ -120,7 +141,8 @@ export type Move =
   | { type: 'draw'; playerId: string }                      // draw 1 (turn passes), or resolve a pending stack
   | { type: 'shield'; playerId: string }
   | { type: 'counter'; playerId: string };
-// First cut: drawing always passes the turn, so there is no separate 'pass' move.
+// No separate 'pass' move: a plain draw passes the turn, EXCEPT a drawn playable card keeps the
+// turn open (RD21 - play that card, or draw again to keep it and pass).
 ```
 
 **RD3 - Multi-card plays.** `cardIds` may be: a single card; a **pair** (2 identical color+number); a
@@ -131,9 +153,12 @@ form the valid pattern. Runs and 3-consecutive-pairs **lock the color** (`colorL
 player must play `currentColor` (or a black card). Numbers do not wrap (9 is the top; no 9-0-1). Pairs
 alone do not lock color.
 
-**RD4 - x2 is a 2-card play.** `mult` (x2) is played together with a draw card whose value >= the
-current `pending.topValue` (or any draw if no pending). It doubles that attached draw card's
-contribution. Example: pending 6 (from +2,+4); player plays [+4, x2] -> adds 4*2=8 -> total 14, passes on.
+**RD4 - x2 (only onto a draw stack; two forms).** `mult` (x2) is **never** legal with no pending stack -
+it always responds to a stack that is on you. Two forms: (a) **`[draw, x2]`** (a 2-card play) where the
+draw's value `>= pending.topValue` - it doubles that attached draw's contribution (pending 6 + `[+4, x2]`
+-> +4*2 -> total 14, `topValue` becomes 4); or (b) **x2 alone** - doubles the current stack top by adding
+`pending.topValue` again, with no new draw card (pending 6 with top +4 -> x2 alone -> total 10, `topValue`
+unchanged). Both pass the turn on.
 
 **RD5 - /2 resolves the stack.** `div` (/2) is played by the player facing a pending draw: it halves
 `pending.total` (round down), that player draws the result, the stack clears, turn passes. Example:
@@ -158,11 +183,12 @@ the card's color; their next play must match that color or be another `playAgain
 hand (no effects triggered); legality requires each to be in hand and share the minus card's color. The
 player may dump none, some, or all of that color. Turn passes.
 
-**RD11 - duel (+4T).** Enters `phase:'duel'` with `pending.total=4` on the targeted opponent. Turns
-alternate only between challenger and opponent; both may stack draws / x2 / /2 / shield / counter. The
-duel ends when one of them resolves the stack by drawing (or /2-draws). On exit: the **challenger**
-chooses `currentColor` (even if they just went out), `phase` returns to `'playing'`, and the turn passes
-to the player after the challenger in the main order.
+**RD11 - duel (+4T).** The challenger chooses `currentColor` **upfront** when playing the +4T (it is
+applied immediately, like any black card per RD1), then `phase:'duel'` opens with `pending.total=4` on
+the targeted opponent. Turns alternate only between challenger and opponent; both may stack draws / x2 /
+/2 / shield / counter. The duel ends when one of them resolves the stack by drawing (or /2-draws);
+`phase` returns to `'playing'` and the turn passes to the player after the challenger in the main order.
+(Black draws stacked during the duel may change `currentColor` before it ends.)
 
 **RD12 - bomb (++4), counterable via a sequential response phase.** Playable only when the top discard
 is a number. Playing it enters `phase:'bombResponse'`: each other active player, in seat order starting
@@ -204,9 +230,9 @@ the threat chains until someone accepts. Accepting (a `draw` move, or a timeout/
 the player draw until `chosenColor`, then they lose their turn. RD19 forbids bouncing with a last (black)
 card. Illegal while a `pending` stack exists.
 
-**RD18 - Win condition.** First player to empty their hand wins (`firstToEmpty`, single round in the
-first cut). You cannot "go out" if you are instead forced to resolve a pending draw. Points-target
-scoring is a later toggle. See RD20 for the last-player-standing path.
+**RD18 - Win condition.** First player to empty their hand wins (single round). You cannot "go out" if
+you are instead forced to resolve a pending draw. The win condition is fixed - there is no points-target
+scoring. See RD20 for the last-player-standing path.
 
 **RD19 - No going out on a black card.** A `play` is **illegal** if it would empty the player's hand
 and the final card played is black (colorless/special). Players cannot win on a wild/+4/bomb/etc.; they
@@ -223,12 +249,22 @@ removed from the turn rotation, becoming an audience member. Rules:
   the normal firstToEmpty win.
 - The check runs after every draw resolution (a single +14 stack can push a hand past 30). `MAX_HAND = 30`.
 
+**RD21 - Draw-then-play.** A plain `draw` with **no** pending stack draws one card; if that card is
+immediately playable, the turn stays open (`drawnPlayable` is set) and the player may either play **that
+card only** or `draw` again to keep it and pass. Any other turn change clears `drawnPlayable`. If the
+drawn card is not playable, the turn passes as before. (Does not apply while a `pending` stack or
+`pendingUntil` threat is on the player - those resolve on draw.)
+
+**RD22 - Random colored opener.** The opening discard is the first non-black card after the deal in the
+shuffled deck (effectively a random colored card). Black openers are skipped so the active color is
+always defined, and an opening card's effect is never applied.
+
 ---
 
 ## RuleConfig (Infinity)
 
-The "full rule builder" becomes mostly **deck composition** plus a few optional toggles (most Infinity
-mechanics are core, not toggles). Proposed default deck counts (tunable; validated to fit one deck):
+The "full rule builder" is mostly **deck composition** plus a few settings (most Infinity mechanics are
+core, not toggles). Default deck counts (tunable; validated to fit one deck):
 
 | Card | Count | | Card | Count |
 |------|-------|-|------|-------|
@@ -240,7 +276,10 @@ mechanics are core, not toggles). Proposed default deck counts (tunable; validat
 | minus (1/color) | 4 | | eye / swap / steal / gift | 3 / 2 / 3 / 3 |
 | | | | drawUntilColor / shield / counter | 3 / 4 / 4 |
 
-Optional toggles kept from classic: starting hand size, max players, points-target win (off by default).
+Configurable settings (`ruleConfigSchema`): `version` (literal 1), `startingHandSize` (1-15, default 7),
+`maxPlayers` (2-10, default 6), and the `deck` counts. The win condition is **fixed** (empty your hand,
+or be the last player standing) - there is no points-target toggle. `mergeConfig` validates the result,
+including that the deck is large enough to deal every player (`startingHandSize * maxPlayers + 1 <= deckTotal`).
 
 ---
 

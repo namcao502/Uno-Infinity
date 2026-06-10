@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import type { RoomMeta, SeatRow } from '@/lib/hooks/useRoom';
 import { callReturnToLobby } from '@/lib/functions';
 import { Button } from '@/components/ui/button';
-import { STRINGS } from '@/lib/constants';
+import { useT } from '@/lib/i18n/context';
 
 interface RoundEndDialogProps {
   roomId: string;
@@ -14,6 +14,7 @@ interface RoundEndDialogProps {
 }
 
 export function RoundEndDialog({ roomId, meta, seats, winnerId }: RoundEndDialogProps) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
 
   if (meta.phase !== 'gameOver') return null;
@@ -25,7 +26,7 @@ export function RoundEndDialog({ roomId, meta, seats, winnerId }: RoundEndDialog
     try {
       await callReturnToLobby({ roomId });
     } catch (e) {
-      toast.error((e as { message?: string })?.message ?? 'Could not return to lobby');
+      toast.error((e as { message?: string })?.message ?? t.roundEnd.returnError);
       setBusy(false);
     }
   };
@@ -33,19 +34,19 @@ export function RoundEndDialog({ roomId, meta, seats, winnerId }: RoundEndDialog
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-sm rounded-2xl border bg-card p-6 text-center">
-        <h2 className="text-2xl font-black">{STRINGS.roundEnd.gameOver}</h2>
-        <p className="mt-1 text-lc-yellow">{winner ? `${winner.name} wins!` : STRINGS.roundEnd.winnerDecided}</p>
+        <h2 className="text-2xl font-black">{t.roundEnd.gameOver}</h2>
+        <p className="mt-1 text-lc-yellow">{winner ? t.roundEnd.wins(winner.name) : t.roundEnd.winnerDecided}</p>
         <ul className="mt-4 space-y-1 text-left text-sm">
           {standings.map((s) => (
             <li key={s.id} className="flex justify-between rounded border bg-background px-3 py-1.5">
-              <span>{s.name}{s.id === winnerId ? ' 🏆' : ''}{s.status === 'out' ? ' (out)' : ''}</span>
-              <span className="text-muted-foreground">{s.handCount} cards</span>
+              <span>{s.name}{s.id === winnerId ? ' 🏆' : ''}{s.status === 'out' ? ` (${t.roundEnd.out})` : ''}</span>
+              <span className="text-muted-foreground">{t.roundEnd.cards(s.handCount)}</span>
             </li>
           ))}
         </ul>
         <div className="mt-5 flex justify-center">
           <Button disabled={busy} variant="outline" onClick={backToLobby}>
-            {STRINGS.roundEnd.backToLobby}
+            {t.roundEnd.backToLobby}
           </Button>
         </div>
       </div>

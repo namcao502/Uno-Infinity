@@ -1,22 +1,19 @@
 'use client';
 import { useRef } from 'react';
-import type { Card, CardKind } from '@last-card/engine';
+import type { Card } from '@last-card/engine';
 import { cn } from '@/lib/utils';
 import { cardInfo } from '@/lib/card-info';
 import { CardIcon, hasCardIcon } from '@/lib/card-icons';
 import { CARD_COLORS, COLORS, TIMING } from '@/lib/constants';
+import { useT } from '@/lib/i18n/context';
+import type { Dict } from '@/lib/i18n';
 
-export function cardLabel(card: Card): string {
-  const color = card.color === 'black' ? 'Black' : card.color.charAt(0).toUpperCase() + card.color.slice(1);
-  if (card.kind === 'number') return `${color} ${card.value}`;
-  if (card.kind === 'draw') return `${color} plus ${card.value}`;
-  if (card.kind === 'reverseDraw') return `Reverse plus ${card.value}`;
-  const names: Partial<Record<CardKind, string>> = {
-    mult: 'times two', div: 'divide by two', skip: 'skip', playAgain: 'play again', minus: 'minus',
-    duel: 'duel', bomb: 'bomb', recycle: 'recycle', eye: 'eye peek', swap: 'swap hands',
-    steal: 'steal', gift: 'gift', drawUntilColor: 'draw until color', shield: 'shield', counter: 'counter', wild: 'wild',
-  };
-  return names[card.kind] ?? card.kind;
+/** Spoken/aria label for a card, from the active dictionary. */
+export function cardLabel(card: Card, t: Dict): string {
+  if (card.kind === 'number') return `${t.colors[card.color]} ${card.value}`;
+  if (card.kind === 'draw') return t.cards.drawName(card.value ?? 0);
+  if (card.kind === 'reverseDraw') return t.cards.reverseName(card.value ?? 0);
+  return t.cards[card.kind].name;
 }
 
 /** Large text shown on a card that has no icon, or the corner value for draw cards. */
@@ -46,7 +43,8 @@ interface GameCardProps {
 }
 
 export function GameCard({ card, selected, playable, dimmed, small, onClick, onInspect }: GameCardProps) {
-  const info = cardInfo(card);
+  const t = useT();
+  const info = cardInfo(card, t);
   const showIcon = hasCardIcon(card);
   const value = faceText(card);
   const corner = !small && hasCorners(card) ? value : '';
@@ -108,7 +106,7 @@ export function GameCard({ card, selected, playable, dimmed, small, onClick, onI
         onPointerUp={endPress}
         onPointerLeave={endPress}
         onContextMenu={(e) => { if (onInspect) { e.preventDefault(); onInspect(); } }}
-        aria-label={cardLabel(card)}
+        aria-label={cardLabel(card, t)}
         className={cn(base, 'cursor-pointer focus-visible:ring-2 focus-visible:ring-lc-yellow', !selected && 'hover:-translate-y-3')}
         style={style}
       >
@@ -118,7 +116,7 @@ export function GameCard({ card, selected, playable, dimmed, small, onClick, onI
   }
   if (onInspect) {
     return (
-      <button type="button" onClick={onInspect} aria-label={`${cardLabel(card)} details`} className={cn(base, 'cursor-pointer')} style={style}>
+      <button type="button" onClick={onInspect} aria-label={`${cardLabel(card, t)} details`} className={cn(base, 'cursor-pointer')} style={style}>
         {content}
       </button>
     );

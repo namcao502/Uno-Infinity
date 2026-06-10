@@ -9,26 +9,28 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GameTable } from '@/components/game/GameTable';
 import { LeaveRoomButton } from './LeaveRoomButton';
-import { STRINGS, TIMING } from '@/lib/constants';
+import { TIMING } from '@/lib/constants';
+import { useT } from '@/lib/i18n/context';
 
 export function Lobby({ roomId }: { roomId: string }) {
   const { meta, seats } = useRoom(roomId);
   const { user } = useAuth();
   usePresence(roomId);
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setTimedOut(true), TIMING.roomNotFoundMs); return () => clearTimeout(t); }, []);
+  useEffect(() => { const id = setTimeout(() => setTimedOut(true), TIMING.roomNotFoundMs); return () => clearTimeout(id); }, []);
 
   if (!meta) {
     if (timedOut) {
       return (
         <div className="mx-auto max-w-md space-y-3 p-10 text-center">
-          <p className="text-muted-foreground">{STRINGS.lobby.notFound}</p>
-          <Link className={buttonVariants({ variant: 'outline' })} href="/">{STRINGS.common.backToHome}</Link>
+          <p className="text-muted-foreground">{t.lobby.notFound}</p>
+          <Link className={buttonVariants({ variant: 'outline' })} href="/">{t.common.backToHome}</Link>
         </div>
       );
     }
-    return <div className="mx-auto max-w-md p-10 text-center text-muted-foreground">{STRINGS.lobby.loadingRoom}</div>;
+    return <div className="mx-auto max-w-md p-10 text-center text-muted-foreground">{t.lobby.loadingRoom}</div>;
   }
   if (meta.phase !== 'lobby') return <GameTable roomId={roomId} />;
 
@@ -43,12 +45,12 @@ export function Lobby({ roomId }: { roomId: string }) {
     <div className="mx-auto w-full max-w-md space-y-6 px-6 py-10">
       <div className="flex items-center justify-between rounded-xl border border-dashed bg-card p-4">
         <div>
-          <p className="text-xs uppercase text-muted-foreground">{STRINGS.lobby.roomCode}</p>
+          <p className="text-xs uppercase text-muted-foreground">{t.lobby.roomCode}</p>
           <p className="text-2xl font-black tracking-[0.3em] text-lc-yellow">{meta.code}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => navigator.clipboard?.writeText(`${location.origin}/play?room=${roomId}`)}>
-            {STRINGS.lobby.copyLink}
+            {t.lobby.copyLink}
           </Button>
           <LeaveRoomButton roomId={roomId} canBecomeAudience={!iAmAudience} />
         </div>
@@ -56,7 +58,7 @@ export function Lobby({ roomId }: { roomId: string }) {
 
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-bold">{STRINGS.lobby.players}</h2>
+          <h2 className="font-bold">{t.lobby.players}</h2>
           <span className="text-sm text-muted-foreground">{players.length} / {meta.maxPlayers}</span>
         </div>
         <ul className="space-y-2">
@@ -66,15 +68,15 @@ export function Lobby({ roomId }: { roomId: string }) {
                 {s.name.charAt(0).toUpperCase()}
               </span>
               <span className="font-medium">{s.name}</span>
-              {s.id === meta.hostId && <Badge variant="secondary">Host</Badge>}
-              {s.isBot && <Badge variant="outline">🤖 bot</Badge>}
+              {s.id === meta.hostId && <Badge variant="secondary">{t.lobby.host}</Badge>}
+              {s.isBot && <Badge variant="outline">🤖 {t.lobby.bot}</Badge>}
             </li>
           ))}
         </ul>
 
         {spectators.length > 0 && (
           <div className="mt-4">
-            <h3 className="mb-2 text-sm font-bold text-muted-foreground">{STRINGS.lobby.spectators} ({spectators.length})</h3>
+            <h3 className="mb-2 text-sm font-bold text-muted-foreground">{t.lobby.spectators} ({spectators.length})</h3>
             <ul className="flex flex-wrap gap-2">
               {spectators.map((s) => (
                 <li key={s.id} className="rounded-full border bg-background px-3 py-1 text-xs">{s.name}</li>
@@ -86,20 +88,20 @@ export function Lobby({ roomId }: { roomId: string }) {
         {isHost && !iAmAudience && (
           <div className="mt-4 flex gap-2">
             <Button variant="outline" disabled={busy || full} onClick={async () => { setBusy(true); try { await callAddBot({ roomId }); } finally { setBusy(false); } }}>
-              {STRINGS.lobby.addBot}
+              {t.lobby.addBot}
             </Button>
             <Button
               className="flex-1 bg-lc-yellow text-lc-ink hover:bg-lc-yellow/90"
               disabled={busy || !canStart}
-              title={canStart ? undefined : STRINGS.lobby.needTwo}
+              title={canStart ? undefined : t.lobby.needTwo}
               onClick={async () => { setBusy(true); try { await callStartGame({ roomId }); } finally { setBusy(false); } }}
             >
-              {STRINGS.lobby.startGame}
+              {t.lobby.startGame}
             </Button>
           </div>
         )}
-        {!isHost && !iAmAudience && <p className="mt-4 text-sm text-muted-foreground">{STRINGS.lobby.waitingForHost}</p>}
-        {iAmAudience && <p className="mt-4 text-sm font-semibold text-muted-foreground">{STRINGS.lobby.spectating}</p>}
+        {!isHost && !iAmAudience && <p className="mt-4 text-sm text-muted-foreground">{t.lobby.waitingForHost}</p>}
+        {iAmAudience && <p className="mt-4 text-sm font-semibold text-muted-foreground">{t.lobby.spectating}</p>}
       </div>
     </div>
   );

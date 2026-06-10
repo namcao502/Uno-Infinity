@@ -25,7 +25,7 @@ re-validated server-side inside an RTDB transaction (`applyAuthoritative`).
 
 ```
 npm install
-npm run test:engine            # engine unit tests (67)
+npm run test:engine            # engine unit tests (101)
 
 # In one shell - emulators (requires Java):
 npx firebase emulators:start --only functions,database,auth

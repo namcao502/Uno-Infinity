@@ -2,7 +2,8 @@
 import { useEffect, useRef } from 'react';
 import type { Card, CardColor, LogEntry } from '@last-card/engine';
 import { GameCard } from './GameCard';
-import { CARD_COLORS, STRINGS } from '@/lib/constants';
+import { CARD_COLORS } from '@/lib/constants';
+import { useT } from '@/lib/i18n/context';
 
 /** RTDB may hand arrays back as keyed objects; restore a dense array (mirrors serde.toArray). */
 function toArr<T>(v: unknown): T[] {
@@ -64,6 +65,7 @@ function Row({ e }: { e: LogEntry }) {
 }
 
 export function GameLog({ log }: { log: readonly LogEntry[] }) {
+  const t = useT();
   const entries = toArr<LogEntry>(log);
   const blocks = groupEntries(entries);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -81,13 +83,13 @@ export function GameLog({ log }: { log: readonly LogEntry[] }) {
 
   return (
     <div className="flex h-[260px] flex-col rounded-xl border bg-card">
-      <div className="border-b px-4 py-3 font-bold">{STRINGS.game.historyTitle}</div>
+      <div className="border-b px-4 py-3 font-bold">{t.game.historyTitle}</div>
       <div ref={scrollRef} className="flex flex-1 flex-col gap-2 overflow-auto px-4 py-3">
-        {entries.length === 0 && <p className="text-sm text-muted-foreground">{STRINGS.game.emptyHistory}</p>}
+        {entries.length === 0 && <p className="text-sm text-muted-foreground">{t.game.emptyHistory}</p>}
         {blocks.map((b) =>
           b.stackId != null ? (
             <div key={b.key} className="rounded-md border-l-2 border-lc-yellow bg-muted/30 py-1 pl-2 pr-1">
-              <div className="text-[10px] font-bold uppercase tracking-wide text-lc-yellow/80">{STRINGS.game.drawChain}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-lc-yellow/80">{t.game.drawChain}</div>
               {b.rows.map((e) => <Row key={e.seq} e={e} />)}
             </div>
           ) : (

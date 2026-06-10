@@ -6,6 +6,7 @@ import { CONFIG_FIELD_CARDS } from '@/lib/card-examples';
 import { cardInfo } from '@/lib/card-info';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useT } from '@/lib/i18n/context';
 
 const GROUPS = ['Table', 'Colored cards', 'Black draws', 'Math & defense', 'Special cards', 'Targeted cards'] as const;
 
@@ -32,20 +33,22 @@ function CardSamples({ cards }: { cards: Card[] }) {
 }
 
 function FieldDetails({ field }: { field: ConfigField }) {
+  const t = useT();
+  const label = t.deck.fields[field.path] ?? field.label;
   const cards = CONFIG_FIELD_CARDS[field.path] ?? [];
-  if (!cards.length) return <span className="text-sm">{field.label}</span>;
-  const details = cards.map((card) => cardInfo(card));
+  if (!cards.length) return <span className="text-sm">{label}</span>;
+  const details = cards.map((card) => cardInfo(card, t));
   return (
     <Tooltip>
       <TooltipTrigger
         render={
           <span className="flex min-w-0 cursor-help items-center gap-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-lc-yellow" />
         }
-        aria-label={`${field.label} card details`}
+        aria-label={t.deck.cardDetailsAria(label)}
         tabIndex={0}
       >
         <CardSamples cards={cards} />
-        <span className="min-w-0 truncate text-sm">{field.label}</span>
+        <span className="min-w-0 truncate text-sm">{label}</span>
       </TooltipTrigger>
       <TooltipContent side="top" align="start" className="max-w-[22rem] items-start gap-3 p-3 text-left">
         <span className="flex shrink-0 -space-x-2">
@@ -54,14 +57,14 @@ function FieldDetails({ field }: { field: ConfigField }) {
           ))}
         </span>
         <span className="block space-y-1">
-          <span className="block text-sm font-bold">{field.label}</span>
+          <span className="block text-sm font-bold">{label}</span>
           <span className="block text-xs leading-snug opacity-90">
             {details.map((info) => info.name).join(' / ')}
           </span>
           <span className="block text-xs leading-snug opacity-80">
             {details[0]?.effect}
           </span>
-          <span className="sr-only">{cards.map(cardLabel).join(', ')}</span>
+          <span className="sr-only">{cards.map((card) => cardLabel(card, t)).join(', ')}</span>
         </span>
       </TooltipContent>
     </Tooltip>
@@ -69,6 +72,8 @@ function FieldDetails({ field }: { field: ConfigField }) {
 }
 
 function Stepper({ field, value, onChange, disabled }: { field: ConfigField; value: number; onChange: (v: number) => void; disabled?: boolean }) {
+  const t = useT();
+  const label = t.deck.fields[field.path] ?? field.label;
   const min = field.min ?? 0;
   const max = field.max ?? 99;
   return (
@@ -76,16 +81,17 @@ function Stepper({ field, value, onChange, disabled }: { field: ConfigField; val
       <FieldDetails field={field} />
       <div className="flex items-center gap-2">
         <Button size="icon-xs" variant="outline" disabled={disabled || value <= min}
-          aria-label={`decrease ${field.label}`} onClick={() => onChange(Math.max(min, value - 1))}>-</Button>
+          aria-label={t.deck.decreaseAria(label)} onClick={() => onChange(Math.max(min, value - 1))}>-</Button>
         <span className="w-6 text-center text-sm font-semibold tabular-nums">{value}</span>
         <Button size="icon-xs" variant="outline" disabled={disabled || value >= max}
-          aria-label={`increase ${field.label}`} onClick={() => onChange(Math.min(max, value + 1))}>+</Button>
+          aria-label={t.deck.increaseAria(label)} onClick={() => onChange(Math.min(max, value + 1))}>+</Button>
       </div>
     </div>
   );
 }
 
 export function DeckConfig({ config, onChange, disabled }: DeckConfigProps) {
+  const t = useT();
   const total = deckTotal(config.deck);
   const needed = config.startingHandSize * config.maxPlayers + 1;
   const fitsDeck = needed <= total;
@@ -95,15 +101,15 @@ export function DeckConfig({ config, onChange, disabled }: DeckConfigProps) {
     <TooltipProvider>
       <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-muted-foreground">Presets:</span>
-        <Button size="sm" variant="outline" disabled={disabled} onClick={() => onChange(DEFAULT_CONFIG)}>Default</Button>
-        <Button size="sm" variant="outline" disabled={disabled} onClick={() => onChange(LITE)}>Lite</Button>
-        <Button size="sm" variant="outline" disabled={disabled} onClick={() => onChange(CHAOS)}>Chaos</Button>
-        <span className="ml-auto text-sm">Deck total: <strong className="tabular-nums">{total}</strong></span>
+        <span className="text-sm font-semibold text-muted-foreground">{t.deck.presets}</span>
+        <Button size="sm" variant="outline" disabled={disabled} onClick={() => onChange(DEFAULT_CONFIG)}>{t.deck.presetDefault}</Button>
+        <Button size="sm" variant="outline" disabled={disabled} onClick={() => onChange(LITE)}>{t.deck.presetLite}</Button>
+        <Button size="sm" variant="outline" disabled={disabled} onClick={() => onChange(CHAOS)}>{t.deck.presetChaos}</Button>
+        <span className="ml-auto text-sm">{t.deck.deckTotal} <strong className="tabular-nums">{total}</strong></span>
       </div>
       {!fitsDeck && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Deck too small: {needed} cards needed to deal, only {total} in deck. Reduce hand size / players or add cards.
+          {t.deck.tooSmall(needed, total)}
         </p>
       )}
       {GROUPS.map((group) => {
@@ -111,7 +117,7 @@ export function DeckConfig({ config, onChange, disabled }: DeckConfigProps) {
         if (!fields.length) return null;
         return (
           <section key={group}>
-            <h3 className="mb-2 text-sm font-bold">{group}</h3>
+            <h3 className="mb-2 text-sm font-bold">{t.deck.groups[group]}</h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {fields.map((f) =>
                 f.type === 'enum' ? (
