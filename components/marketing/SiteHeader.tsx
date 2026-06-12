@@ -34,7 +34,7 @@ export function SiteHeader() {
       </Link>
       <nav className="flex items-center gap-3 text-sm font-semibold text-muted-foreground sm:gap-5">
         <Link href="/#how-to-play" className="hidden hover:text-foreground sm:inline">{t.header.howToPlay}</Link>
-        <Link href="/#rules" className="hidden hover:text-foreground sm:inline">{t.header.houseRules}</Link>
+        <Link href="/?rules" scroll={false} className="hidden hover:text-foreground sm:inline">{t.header.houseRules}</Link>
         <Link href="/#about" className="hidden hover:text-foreground sm:inline">{t.header.about}</Link>
         <LanguageToggle />
         <ThemeToggle />

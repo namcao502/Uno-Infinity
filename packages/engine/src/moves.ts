@@ -317,6 +317,7 @@ function applyEffect(s: GameState, combo: Combo, move: Extract<Move, { type: 'pl
     case 'duel':                                             // RD11: enter 1v1; color chosen upfront
       s.phase = 'duel';
       s.pending = { total: 4, topValue: 4, source: 'blackDraw' };
+      s.chainId++;                                           // the +4 duel opens a fresh draw chain
       s.duel = { challengerId: actor.id, opponentId: move.targetId!, activeId: move.targetId! };
       s.currentColor = move.chosenColor ?? s.currentColor;
       logDetail(s, actor, `challenges ${seatName(s, move.targetId)} to a +4 duel`);

@@ -9,6 +9,7 @@ export const en = {
   common: {
     backToHome: 'Back to home',
     loading: 'Loading...',
+    processing: 'Working...',
     cancel: 'Cancel',
   },
   header: {
@@ -60,13 +61,18 @@ export const en = {
       `Host ${host} · ${players}/${max} players · ${cards} cards`,
   },
   lobby: {
+    title: 'Room lobby',
     roomCode: 'Room code',
     copyLink: 'Copy link',
     players: 'Players',
     spectators: 'Spectators',
     addBot: 'Add bot',
+    removeBot: 'Remove',
     startGame: 'Start game',
     needTwo: 'Need at least 2 players',
+    deleteRoom: 'Delete room',
+    deleteConfirmTitle: 'Delete this room?',
+    deleteConfirmNote: 'This closes the room and removes everyone. It cannot be undone.',
     waitingForHost: 'Waiting for the host to start...',
     spectating: 'You are spectating this room.',
     notFound: 'Room not found.',
@@ -238,11 +244,11 @@ export const en = {
   },
   features: {
     builderTitle: 'Full deck builder',
-    builderBody: 'Tune every card count - draw stacks, x2/÷2, duels, bombs, shields, swaps, 7-0 style specials. Save it on the room.',
+    builderBody: 'Tune every card count - draw stacks, x2/÷2, duels, bombs, shields, swap/steal/gift, recycle. Saved on the room.',
     roomsTitle: 'Instant rooms',
     roomsBody: 'Private codes, live sync via Firebase, reconnect to your seat if you drop. Bots fill empty chairs.',
     chatTitle: 'Chat & emotes',
-    chatBody: 'Talk smack in-room, fire emoji reactions, and enjoy snappy card animations and sound.',
+    chatBody: 'Talk smack in-room, fire emoji reactions, and enjoy snappy card animations.',
   },
   howTo: {
     heading: 'How to play',
@@ -252,7 +258,7 @@ export const en = {
     introType: 'type/number',
     intro2: ', empty your hand to win - but mind the extra cards that can swing a game in one turn.',
     step1Bold: 'Create or join a room.',
-    step1: 'The host tunes the deck, shares the 4-letter code, and can add bots to fill seats.',
+    step1: 'The host tunes the deck, shares the 4-character code, and can add bots to fill seats.',
     step2Bold: 'On your turn',
     step2: ', play a matching card (or a pair/run/three-consecutive-pairs of the same color), or draw.',
     step3Bold: 'Draw cards stack.',
@@ -268,7 +274,7 @@ export const en = {
   about: {
     heading: 'About',
     p1: 'Last Card is a real-time, server-authoritative multiplayer card game. A pure TypeScript rule engine is the single source of truth; Cloud Functions validate every move against secret state, so hands stay private and the rules are enforced on the server - not the client.',
-    p2: 'Built with Next.js, Firebase Realtime Database, Auth, and Cloud Functions. Play anonymously with a nickname, or sign in with Google to keep your identity across sessions.',
+    p2: 'Built with Next.js, Firebase Realtime Database, Auth, and Cloud Functions. Sign in with Google to play - your hand stays private to you, and you can reconnect to your seat if you drop.',
   },
   // House-rules card catalog (mirrors the engine; shown on the rules section).
   rules: {

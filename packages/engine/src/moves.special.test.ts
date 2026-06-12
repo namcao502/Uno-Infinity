@@ -99,6 +99,15 @@ describe('special effects', () => {
     expect(ended.currentColor).toBe('blue');
     expect(ended.turnIndex).toBe(1); // after challenger p1 (idx 0) -> p2 (idx 1), per RD11
   });
+  it('duel opens a fresh draw chain: its stackId never collides with a prior chain (RD11)', () => {
+    // Simulate a previously-resolved draw chain (chainId already 1, e.g. a +draw stack earlier).
+    const s = mk({ chainId: 1 }, [[C({ id: 'a', color: 'black', kind: 'duel', value: 4 }), C({ id: 'k', value: 3 })], [], []]);
+    const entered = applyMove(s, { type: 'play', playerId: 'p1', cardIds: ['a'], targetId: 'p2', chosenColor: 'blue' });
+    expect(entered.chainId).toBe(2);                 // a duel is a new +4 chain -> fresh id
+    const ended = applyMove(entered, { type: 'draw', playerId: 'p2' });
+    const drawEntry = ended.log.find((e) => e.kind === 'draw' && e.stackId != null);
+    expect(drawEntry?.stackId).toBe(2);              // tagged with the new chain, not the stale 1
+  });
   it('duel: the opponent playing /2 also ends the duel (RD11)', () => {
     const s = mk({}, [[C({ id: 'a', color: 'black', kind: 'duel', value: 4 }), C({ id: 'k', value: 3 })],
       [C({ id: 'v', color: 'black', kind: 'div', value: 2 }), C({ id: 'k2', value: 5 })], []]);

@@ -5,6 +5,7 @@ export const vi: Dict = {
   common: {
     backToHome: 'Về trang chủ',
     loading: 'Đang tải...',
+    processing: 'Đang xử lý...',
     cancel: 'Hủy',
   },
   header: {
@@ -55,13 +56,18 @@ export const vi: Dict = {
       `Chủ phòng ${host} · ${players}/${max} người · ${cards} lá`,
   },
   lobby: {
+    title: 'Phòng chờ',
     roomCode: 'Mã phòng',
     copyLink: 'Sao chép liên kết',
     players: 'Người chơi',
     spectators: 'Khán giả',
     addBot: 'Thêm bot',
+    removeBot: 'Xóa',
     startGame: 'Bắt đầu',
     needTwo: 'Cần ít nhất 2 người chơi',
+    deleteRoom: 'Xóa phòng',
+    deleteConfirmTitle: 'Xóa phòng này?',
+    deleteConfirmNote: 'Thao tác này đóng phòng và đưa mọi người ra ngoài. Không thể hoàn tác.',
     waitingForHost: 'Đang chờ chủ phòng bắt đầu...',
     spectating: 'Bạn đang xem phòng này.',
     notFound: 'Không tìm thấy phòng.',
@@ -228,11 +234,11 @@ export const vi: Dict = {
   },
   features: {
     builderTitle: 'Trình tạo bộ bài đầy đủ',
-    builderBody: 'Tùy chỉnh số lượng từng lá - chồng rút, x2/÷2, đấu tay đôi, bom, khiên, đổi bài, đặc biệt kiểu 7-0. Lưu vào phòng.',
+    builderBody: 'Tùy chỉnh số lượng từng lá - chồng rút, x2/÷2, đấu tay đôi, bom, khiên, đổi/cướp/tặng, tái chế. Lưu vào phòng.',
     roomsTitle: 'Phòng tức thì',
     roomsBody: 'Mã riêng, đồng bộ trực tiếp qua Firebase, kết nối lại vào chỗ của bạn nếu rớt mạng. Bot lấp chỗ trống.',
     chatTitle: 'Trò chuyện & biểu cảm',
-    chatBody: 'Tám chuyện trong phòng, thả biểu tượng cảm xúc, và tận hưởng hiệu ứng lá bài mượt mà cùng âm thanh.',
+    chatBody: 'Tám chuyện trong phòng, thả biểu tượng cảm xúc, và tận hưởng hiệu ứng lá bài mượt mà.',
   },
   howTo: {
     heading: 'Cách chơi',
@@ -258,7 +264,7 @@ export const vi: Dict = {
   about: {
     heading: 'Giới thiệu',
     p1: 'Last Card là trò chơi bài nhiều người thời gian thực, do máy chủ kiểm soát. Một engine luật thuần TypeScript là nguồn chân lý duy nhất; Cloud Functions kiểm tra mọi nước đi dựa trên trạng thái bí mật, nên bài trên tay luôn riêng tư và luật được thực thi ở máy chủ - không phải ở máy người chơi.',
-    p2: 'Xây dựng bằng Next.js, Firebase Realtime Database, Auth và Cloud Functions. Chơi ẩn danh bằng biệt danh, hoặc đăng nhập Google để giữ danh tính qua các phiên.',
+    p2: 'Xây dựng bằng Next.js, Firebase Realtime Database, Auth và Cloud Functions. Đăng nhập Google để chơi - bài trên tay luôn riêng tư, và bạn có thể kết nối lại vào chỗ ngồi nếu rớt mạng.',
   },
   rules: {
     heading: 'Luật chơi',

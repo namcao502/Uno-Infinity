@@ -3,7 +3,6 @@ import { SiteHeader } from '@/components/marketing/SiteHeader';
 import { Hero } from '@/components/marketing/Hero';
 import { FeatureGrid } from '@/components/marketing/FeatureGrid';
 import { HowToPlaySection } from '@/components/marketing/HowToPlaySection';
-import { RulesSection } from '@/components/marketing/RulesSection';
 import { AboutSection } from '@/components/marketing/AboutSection';
 import { RoomDialogsLazy } from '@/components/lobby/RoomDialogsLazy';
 import { InstallPrompt } from '@/components/InstallPrompt';
@@ -15,7 +14,6 @@ export default function Home() {
       <Hero />
       <FeatureGrid />
       <HowToPlaySection />
-      <RulesSection />
       <AboutSection />
       {/* Create / browse / join popups, opened via ?create / ?browse / ?join. Lazy-loaded so the
           dialog code + Firebase db/functions only load when a dialog is actually requested. */}

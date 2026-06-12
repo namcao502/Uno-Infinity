@@ -24,6 +24,11 @@ function stackDrawReason(pending: PendingDraw, card: Card): string {
 
 /** Pure matching (no pending logic). Pending rules are enforced in isMoveLegal. */
 export function isPlayable(card: Card, top: Card, currentColor: CardColor, colorLocked: boolean): boolean {
+  // Stack-response-only cards are never a normal lead play: shield/counter are played via their
+  // dedicated moves, and x2//2 only act on a pending draw stack (all enforced in isMoveLegal /
+  // surfaced by the pending branches of the client + getPlayableCards).
+  if (card.kind === 'shield' || card.kind === 'counter' || card.kind === 'mult' || card.kind === 'div') return false;
+  if (card.kind === 'bomb') return top.kind === 'number'; // RD12: bomb plays only onto a number top
   if (isBlack(card)) return true;                       // colorless plays on anything, bypasses lock
   if (colorLocked) return card.color === currentColor;
   if (card.color === currentColor) return true;

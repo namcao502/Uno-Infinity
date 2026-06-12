@@ -63,6 +63,8 @@ const ALL_CARDS: Card[] = (() => {
  *  lock forces the active color; otherwise a colored card matches by color, by number value, or by
  *  special kind. */
 function refPlayable(card: Card, pile: Card, active: CardColor, locked: boolean): boolean {
+  if (card.kind === 'shield' || card.kind === 'counter' || card.kind === 'mult' || card.kind === 'div') return false; // stack-response-only
+  if (card.kind === 'bomb') return pile.kind === 'number'; // RD12: bomb plays only onto a number top
   const sameColor = card.color === active;
   if (card.color === 'black') return true;
   if (locked) return sameColor;

@@ -35,7 +35,7 @@ export function ChatPanel({ roomId, nickname }: { roomId: string; nickname: stri
       </div>
       <div className="flex gap-2 border-t p-2">
         <Input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder={t.chat.placeholder} maxLength={LIMITS.chatMax} />
-        <Button onClick={submit}>{t.chat.send}</Button>
+        <Button size="lg" onClick={submit}>{t.chat.send}</Button>
       </div>
     </div>
   );

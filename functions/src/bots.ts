@@ -33,14 +33,31 @@ export async function driveTurnOnce(roomId: string, turnId: string): Promise<voi
   const seat = (await db.ref(`rooms/${roomId}/seats/${turnId}`).get()).val();
 
   // --- Bot: play after a short pacing delay -------------------------------
+  // A bot can stay on turn after its own move - RD7 playAgain (no advance), or a skip in a
+  // 2-player game that bounces back to the same seat. public/turnId is then unchanged, so the
+  // turnId-change trigger never re-fires; we must drive the same bot again here or it freezes.
+  // (redactFor computes public/turnId exactly like activeIdOf, so an unchanged activeId means an
+  // unchanged turnId and no trigger.) Loop until the turn leaves this bot; cap as a safety net.
   if (seat?.isBot === true) {
-    await new Promise((r) => setTimeout(r, 900));
-    if (await isPaused(roomId)) return;                    // host paused during the pacing delay
-    await applyAuthoritative(roomId, (state) => {
-      if (!ACTIONABLE.includes(state.phase) || activeIdOf(state) !== turnId) return undefined;
-      const move = botChooseMove(state, turnId);
-      return isMoveLegal(state, move).ok ? applyMove(state, move) : undefined;
-    });
+    let actingId = turnId;
+    for (let guard = 0; guard < 64; guard++) {
+      await new Promise((r) => setTimeout(r, 900));
+      if (await isPaused(roomId)) return;                  // host paused during the pacing delay
+      const after = await applyAuthoritative(roomId, (state) => {
+        if (!ACTIONABLE.includes(state.phase) || activeIdOf(state) !== actingId) return undefined;
+        // If the AI ever picks an illegal move (e.g. a targeted card with no valid opponent),
+        // fall back to the safe default (draw) so the bot can never freeze its own turn.
+        let move = botChooseMove(state, actingId);
+        if (!isMoveLegal(state, move).ok) move = { type: 'draw', playerId: actingId };
+        return isMoveLegal(state, move).ok ? applyMove(state, move) : undefined;
+      });
+      if (!after) return;                                  // aborted (illegal / turn already moved) or game gone
+      const nextId = activeIdOf(after);
+      if (nextId !== actingId) return;                     // turn advanced -> the turnId trigger drives the next actor
+      if (!ACTIONABLE.includes(after.phase)) return;       // game over / non-actionable phase
+      if (after.players.find((p) => p.id === nextId)?.isBot !== true) return; // a human now holds the repeat turn
+      actingId = nextId;                                   // same bot still on turn -> drive it again
+    }
     return;
   }
 

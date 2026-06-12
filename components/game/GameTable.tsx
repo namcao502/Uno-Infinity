@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  canStackDraw, isPlayable, classifySet, type Card, type CardColor, type CardKind, type Move,
+  canStackDraw, isPlayable, classifySet, type Card, type CardColor, type CardKind, type Move, type LogEntry,
 } from '@last-card/engine';
 import { useRoom, type PublicState } from '@/lib/hooks/useRoom';
 import { useHand } from '@/lib/hooks/useHand';
@@ -59,6 +60,7 @@ export function GameTable({ roomId }: { roomId: string }) {
   usePresence(roomId);
   const serverNow = useServerNow();
   const t = useT();
+  const router = useRouter();
 
   const [selected, setSelected] = useState<string[]>([]);
   // a play awaiting extra input (color / target / gift / minus discards). `effective` is the card
@@ -67,17 +69,38 @@ export function GameTable({ roomId }: { roomId: string }) {
   // a card whose effect the player is inspecting
   const [inspect, setInspect] = useState<Card | null>(null);
   const [pauseBusy, setPauseBusy] = useState(false);
+  // Id of the hand card currently being dragged toward the table (HTML5 drag-and-drop, desktop).
+  const [dragId, setDragId] = useState<string | null>(null);
 
   // Discard pile: keep the last few played cards on the board (newest on top), capped at
   // DISCARD_PILE_MAX. We accumulate each new discardTop client-side as it changes.
-  const [pile, setPile] = useState<Card[]>([]);
+  const [pile, setPile] = useState<{ card: Card; fromX: number; fromY: number }[]>([]);
   const lastTopRef = useRef<string | null>(null);
   useEffect(() => {
     const top = pub?.discardTop;
     if (!top || top.id === lastTopRef.current) return;
     lastTopRef.current = top.id;
-    setPile((prev) => (prev.some((c) => c.id === top.id) ? prev : [...prev, top].slice(-DISCARD_PILE_MAX)));
-  }, [pub?.discardTop]);
+    // Fly the new top card in from the SEAT of whoever produced it (the last play/shield/counter),
+    // mapped onto the same ring RoundTable lays out (me at the bottom). Falls back to bottom.
+    const myUid = user?.uid ?? '';
+    const log = (Array.isArray(pub?.log) ? pub?.log : Object.values(pub?.log ?? {})) as LogEntry[];
+    let actorId = myUid;
+    for (let i = log.length - 1; i >= 0; i--) {
+      const e = log[i];
+      if (e && (e.kind === 'play' || e.kind === 'shield' || e.kind === 'counter') && e.actorId) { actorId = e.actorId; break; }
+    }
+    const parts = seats.filter((s) => !s.isAudience);
+    const n = Math.max(1, parts.length);
+    const mi = parts.findIndex((s) => s.id === myUid);
+    const ordered = mi >= 0 ? [...parts.slice(mi), ...parts.slice(0, mi)] : parts;
+    const k = ordered.findIndex((s) => s.id === actorId);
+    const a = ((k >= 0 ? k : 0) / n) * 2 * Math.PI;   // 0 = bottom (me), matching seatPos in RoundTable
+    const D = 230;                                     // px the card travels in from the seat direction
+    const fromX = -Math.sin(a) * D;
+    const fromY = Math.cos(a) * D;
+    setPile((prev) => (prev.some((c) => c.card.id === top.id) ? prev : [...prev, { card: top, fromX, fromY }].slice(-DISCARD_PILE_MAX)));
+    // Only discardTop change appends (lastTopRef guards dups); the rest are read for the fly-in origin.
+  }, [pub?.discardTop, pub?.log, seats, user?.uid]);
 
   // Turn-timer enforcement: when the deadline passes and the player on turn is
   // ONLINE, any connected client asks the server to force the safe default. The
@@ -119,6 +142,24 @@ export function GameTable({ roomId }: { roomId: string }) {
     }, 700);
     return () => clearTimeout(timer);
   }, [pub, meta, seats, user?.uid, drawnPlayableCardId, hand, roomId, t]);
+
+  // Alert the player the moment it becomes their turn (rising edge only, so re-renders during
+  // the turn don't re-fire). A toast catches the eye even if they looked away; a short vibrate
+  // nudges on mobile. The persistent banner + seat glow keep reminding for the rest of the turn.
+  const turnAlertRef = useRef(false);
+  useEffect(() => {
+    const id = user?.uid ?? '';
+    const mySeat = seats.find((s) => s.id === id);
+    const myActionableTurn =
+      !!pub && !!meta && !meta.paused && pub.turnId === id
+      && !mySeat?.isAudience && mySeat?.status !== 'out'
+      && ACTIONABLE_PHASES.includes(pub.phase);
+    if (myActionableTurn && !turnAlertRef.current) {
+      toast.success(t.game.yourTurn, { duration: 2500 });
+      if (typeof navigator !== 'undefined') navigator.vibrate?.(180);
+    }
+    turnAlertRef.current = myActionableTurn;
+  }, [pub, meta, seats, user?.uid, t]);
 
   if (!pub || !meta) return <div className="p-10 text-center text-muted-foreground">{t.game.dealing}</div>;
 
@@ -169,8 +210,9 @@ export function GameTable({ roomId }: { roomId: string }) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   };
 
-  const tryPlay = () => {
-    const cards = selected.map((id) => hand.find((c) => c.id === id)).filter(Boolean) as Card[];
+  // Play a set of cards (defaults to the click-selected set; drag-to-table passes a single id).
+  const tryPlay = (ids: string[] = selected) => {
+    const cards = ids.map((id) => hand.find((c) => c.id === id)).filter(Boolean) as Card[];
     // Shield / counter are played by selecting the card; the engine takes a dedicated move for them.
     const only = cards.length === 1 ? cards[0] : null;
     if (only?.kind === 'shield') { submit({ type: 'shield', playerId: myId }); return; }
@@ -181,16 +223,16 @@ export function GameTable({ roomId }: { roomId: string }) {
     const effective = effectiveOf(lead);   // for a recycle, the card it copies (may need color/target/gift/minus)
     if (effective.kind === 'minus') {
       // Let the player pick which same-color cards to dump; skip the prompt if there are none.
-      const sameColor = hand.filter((c) => c.color === effective.color && !selected.includes(c.id));
-      if (sameColor.length === 0) { submit({ type: 'play', playerId: myId, cardIds: selected }); return; }
-      setDraft({ cardIds: selected, lead, effective, minusDiscardIds: [] });
+      const sameColor = hand.filter((c) => c.color === effective.color && !ids.includes(c.id));
+      if (sameColor.length === 0) { submit({ type: 'play', playerId: myId, cardIds: ids }); return; }
+      setDraft({ cardIds: ids, lead, effective, minusDiscardIds: [] });
       return;
     }
     if (needsColor(effective) || TARGETED.has(effective.kind) || effective.kind === 'gift') {
-      setDraft({ cardIds: selected, lead, effective });
+      setDraft({ cardIds: ids, lead, effective });
       return;
     }
-    submit({ type: 'play', playerId: myId, cardIds: selected });
+    submit({ type: 'play', playerId: myId, cardIds: ids });
   };
 
   // finalize a drafted play once all required inputs are present
@@ -231,10 +273,20 @@ export function GameTable({ roomId }: { roomId: string }) {
             <div className="max-w-sm rounded-xl border bg-card p-6 text-center">
               <h3 className="text-lg font-bold">{t.game.pausedTitle}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{t.game.pausedByHost}</p>
-              {isHost && (
-                <Button className="mt-4" disabled={pauseBusy} onClick={() => togglePause(false)}>{t.game.resume}</Button>
-              )}
+              <div className="mt-4 flex flex-col gap-2">
+                {isHost && (
+                  <Button size="lg" disabled={pauseBusy} onClick={() => togglePause(false)}>{t.game.resume}</Button>
+                )}
+                <Button size="lg" variant="outline" onClick={() => router.push('/')}>{t.common.backToHome}</Button>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Your-turn banner: a bright, pulsing bar so the active player can't miss it. */}
+        {!eliminated && myTurn && !meta.paused && ACTIONABLE_PHASES.includes(pub.phase) && (
+          <div className="animate-play-ready rounded-lg bg-lc-yellow px-4 py-2 text-center text-base font-black uppercase tracking-wide text-lc-ink motion-reduce:animate-none">
+            {t.game.yourTurn}
           </div>
         )}
 
@@ -242,8 +294,10 @@ export function GameTable({ roomId }: { roomId: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-4 py-2 text-sm">
           <span className="font-bold">{t.game.room(meta.code)}</span>
           <span className="flex items-center gap-2">
-            <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: colorHex(pub.currentColor) }}>
-              {t.game.current}: {t.colors[pub.currentColor]}
+            <span className="inline-flex items-center gap-1.5 rounded-full border-2 bg-card px-3 py-1 text-sm font-bold shadow-sm">
+              <span className="text-muted-foreground">{t.game.current}:</span>
+              <span className="inline-block h-4 w-4 rounded-full border border-black/20" style={{ backgroundColor: colorHex(pub.currentColor) }} aria-hidden />
+              <span className="font-black">{t.colors[pub.currentColor]}</span>
             </span>
             {pub.colorLocked && <span className="rounded bg-muted px-2 py-0.5 text-xs">{t.game.colorLocked}</span>}
             {timerSecs !== null && (
@@ -272,7 +326,19 @@ export function GameTable({ roomId }: { roomId: string }) {
 
         {/* Center: round table with draw pile + fanned discard pile in the middle */}
         <RoundTable seats={seats} myId={myId} direction={pub.direction} presence={presence} serverNow={serverNow}>
-          <div className="relative flex items-center justify-center gap-3">
+          <div
+            className={cn(
+              'relative flex items-center justify-center gap-3 rounded-2xl p-1 transition-all',
+              dragId && 'ring-2 ring-lc-yellow ring-offset-2 ring-offset-lc-table',
+            )}
+            onDragOver={(e) => { if (dragId) e.preventDefault(); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const id = e.dataTransfer.getData('text/plain') || dragId;
+              setDragId(null);
+              if (id) tryPlay([id]);
+            }}
+          >
             <button
               type="button"
               disabled={!myTurn || eliminated}
@@ -285,14 +351,19 @@ export function GameTable({ roomId }: { roomId: string }) {
             <div className="flex flex-col items-center gap-1">
               {/* Fanned discard pile: older cards scattered underneath, newest on top flies in from the hand. */}
               <div className="relative h-28 w-20">
-                {pile.map((c, i) => {
+                {pile.map((entry, i) => {
+                  const c = entry.card;
                   const isTop = i === pile.length - 1;
                   const { rot, dx, dy } = scatter(c.id);
                   return (
                     <span key={c.id} className="absolute inset-0" style={{ transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`, zIndex: i }}>
-                      <span className={isTop ? 'block animate-in fade-in zoom-in-95 slide-in-from-bottom-24 spin-in-2 duration-500 motion-reduce:animate-none' : 'block'}>
-                        <GameCard card={c} onInspect={isTop ? () => setInspect(c) : undefined} />
-                      </span>
+                      {isTop ? (
+                        <FlyIn x={entry.fromX} y={entry.fromY}>
+                          <GameCard card={c} onInspect={() => setInspect(c)} />
+                        </FlyIn>
+                      ) : (
+                        <span className="block"><GameCard card={c} /></span>
+                      )}
                     </span>
                   );
                 })}
@@ -332,23 +403,23 @@ export function GameTable({ roomId }: { roomId: string }) {
           <div className="flex flex-wrap items-center gap-2">
             {pub.phase === 'bombResponse' ? (
               <>
-                <Button onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.accept}</Button>
+                <Button size="lg" onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.accept}</Button>
                 <PlaySelectedButton count={selected.length} onClick={tryPlay} />
               </>
             ) : pub.pending ? (
               <>
-                <Button variant="outline" onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.drawAmount(pub.pending.total)}</Button>
+                <Button size="lg" variant="outline" onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.drawAmount(pub.pending.total)}</Button>
                 <PlaySelectedButton count={selected.length} onClick={tryPlay} />
               </>
             ) : pub.pendingUntil ? (
               <>
-                <Button variant="outline" onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.drawUntil(t.colors[pub.pendingUntil.color])}</Button>
+                <Button size="lg" variant="outline" onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.drawUntil(t.colors[pub.pendingUntil.color])}</Button>
                 <PlaySelectedButton count={selected.length} onClick={tryPlay} />
               </>
             ) : drawnPlayableCardId ? (
               <>
                 <PlaySelectedButton count={selected.length} onClick={tryPlay} />
-                <Button variant="outline" onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.keepCard}</Button>
+                <Button size="lg" variant="outline" onClick={() => submit({ type: 'draw', playerId: myId })}>{t.game.keepCard}</Button>
                 <span className="text-sm text-muted-foreground">{t.game.drewPlayable}</span>
               </>
             ) : (
@@ -372,17 +443,27 @@ export function GameTable({ roomId }: { roomId: string }) {
         ) : (
           <div className="flex flex-wrap gap-2 rounded-lg border bg-card p-3">
             {sortedHand.length === 0 && <span className="text-sm text-muted-foreground">{t.game.noCards}</span>}
-            {sortedHand.map((c) => (
-              <GameCard
-                key={c.id}
-                card={c}
-                selected={selected.includes(c.id)}
-                playable={myTurn && !eliminated && clientPlayable(c)}
-                dimmed={!eliminated && myTurn && !clientPlayable(c) && !selected.includes(c.id)}
-                onClick={() => toggle(c.id)}
-                onInspect={() => setInspect(c)}
-              />
-            ))}
+            {sortedHand.map((c) => {
+              const canDrag = myTurn && !eliminated && clientPlayable(c);
+              return (
+                <div
+                  key={c.id}
+                  draggable={canDrag}
+                  onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; setDragId(c.id); }}
+                  onDragEnd={() => setDragId(null)}
+                  className={cn(dragId === c.id && 'opacity-40', canDrag && 'cursor-grab active:cursor-grabbing')}
+                >
+                  <GameCard
+                    card={c}
+                    selected={selected.includes(c.id)}
+                    playable={canDrag}
+                    dimmed={!eliminated && myTurn && !clientPlayable(c) && !selected.includes(c.id)}
+                    onClick={() => toggle(c.id)}
+                    onInspect={() => setInspect(c)}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -399,7 +480,7 @@ export function GameTable({ roomId }: { roomId: string }) {
       </div>
 
       <div className="space-y-4">
-        <GameLog log={pub.log} />
+        <GameLog log={pub.log} seats={seats} />
         <ChatPanel roomId={roomId} nickname={nickname} />
       </div>
 
@@ -427,17 +508,19 @@ export function GameTable({ roomId }: { roomId: string }) {
           {(!needsColor(draft.effective) || draft.chosenColor) && TARGETED.has(draft.effective.kind) && !draft.targetId && (
             <Picker title={t.game.choosePlayer}>
               {activeOpponents.map((o) => (
-                <Button key={o.id} variant="outline" onClick={() => finalizeDraft({ targetId: o.id })}>{o.name}</Button>
+                <Button key={o.id} size="lg" variant="outline" onClick={() => finalizeDraft({ targetId: o.id })}>{o.name}</Button>
               ))}
             </Picker>
           )}
           {draft.effective.kind === 'gift' && draft.targetId && (
             <Picker title={t.game.chooseGift}>
-              {hand.filter((c) => !draft.cardIds.includes(c.id)).map((c) => (
-                <button key={c.id} onClick={() => submit({ type: 'play', playerId: myId, cardIds: draft.cardIds, targetId: draft.targetId, giftCardId: c.id })}>
-                  <GameCard card={c} small />
-                </button>
-              ))}
+              <div className="flex flex-wrap gap-2">
+                {hand.filter((c) => !draft.cardIds.includes(c.id)).map((c) => (
+                  <button key={c.id} onClick={() => submit({ type: 'play', playerId: myId, cardIds: draft.cardIds, targetId: draft.targetId, giftCardId: c.id })}>
+                    <GameCard card={c} />
+                  </button>
+                ))}
+              </div>
             </Picker>
           )}
           {draft.effective.kind === 'minus' && (
@@ -455,12 +538,13 @@ export function GameTable({ roomId }: { roomId: string }) {
                         return { ...d, minusDiscardIds: cur.includes(c.id) ? cur.filter((x) => x !== c.id) : [...cur, c.id] };
                       })}
                     >
-                      <GameCard card={c} small selected={picked} />
+                      <GameCard card={c} selected={picked} />
                     </button>
                   );
                 })}
               </div>
               <Button
+                size="lg"
                 className="mt-3"
                 disabled={minusWouldEmpty(draft)}
                 onClick={() => submit({ type: 'play', playerId: myId, cardIds: draft.cardIds, minusDiscardIds: draft.minusDiscardIds ?? [] })}
@@ -482,7 +566,7 @@ export function GameTable({ roomId }: { roomId: string }) {
             <div className="mb-3 flex justify-center"><GameCard card={inspect} /></div>
             <h3 className="font-bold">{cardInfo(inspect, t).name}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{cardInfo(inspect, t).effect}</p>
-            <Button className="mt-4" onClick={() => setInspect(null)}>{t.game.close}</Button>
+            <Button size="lg" className="mt-4" onClick={() => setInspect(null)}>{t.game.close}</Button>
           </div>
         </Overlay>
       )}
@@ -494,7 +578,7 @@ export function GameTable({ roomId }: { roomId: string }) {
             <div className="flex max-w-md flex-wrap gap-2">
               {peek.cards.map((c) => <GameCard key={c.id} card={c} small />)}
             </div>
-            <Button className="mt-3" onClick={dismiss}>{t.game.done}</Button>
+            <Button size="lg" className="mt-3" onClick={dismiss}>{t.game.done}</Button>
           </Picker>
         </Overlay>
       )}
@@ -552,11 +636,37 @@ function PlaySelectedButton({ count, onClick }: { count: number; onClick: () => 
     </button>
   );
 }
+/** Flies its child in from (x, y) px to its resting spot on mount: a card animating from the
+ *  player's seat into the center pile. Honors prefers-reduced-motion (no movement). */
+function FlyIn({ x, y, children }: { x: number; y: number; children: React.ReactNode }) {
+  const reduce = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const [landed, setLanded] = useState(reduce);
+  useEffect(() => {
+    if (reduce) return;
+    const id = requestAnimationFrame(() => setLanded(true));
+    return () => cancelAnimationFrame(id);
+  }, [reduce]);
+  return (
+    <span
+      className="block"
+      style={{
+        transform: landed ? 'none' : `translate(${x}px, ${y}px) scale(0.65) rotate(-12deg)`,
+        opacity: landed ? 1 : 0,
+        transition: reduce ? undefined : 'transform 600ms cubic-bezier(0.18,0.89,0.32,1.15), opacity 350ms ease-out',
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 function Picker({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border bg-card p-5">
       <h3 className="mb-4 text-xl font-bold sm:text-2xl">{title}</h3>
-      <div className="flex flex-wrap gap-2">{children}</div>
+      {/* Stack children vertically so any action (choose player / discard) sits BELOW the cards,
+          not in line with them. Card collections wrap within their own row (see callers). */}
+      <div className="flex flex-col gap-3">{children}</div>
     </div>
   );
 }

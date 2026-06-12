@@ -1,7 +1,10 @@
 'use client';
 import Link from 'next/link';
+import { buttonVariants } from '@/components/ui/button';
 import { useT } from '@/lib/i18n/context';
 
+// Focused "How to Play": just the quick-start steps. The full House Rules card reference lives
+// in a popup (?rules), linked below and from the header.
 export function HowToPlaySection() {
   const t = useT();
   return (
@@ -19,7 +22,9 @@ export function HowToPlaySection() {
           <li><strong>{t.howTo.step5Bold}</strong>{t.howTo.step5}</li>
           <li><strong>{t.howTo.step6Bold}</strong> {t.howTo.step6}</li>
         </ol>
-        <p><Link href="#rules" className="font-semibold text-lc-yellow hover:underline">{t.howTo.seeRules}</Link></p>
+        <div className="pt-2">
+          <Link href="/?rules" scroll={false} className={buttonVariants({ variant: 'outline', size: 'lg' })}>{t.howTo.seeRules}</Link>
+        </div>
       </article>
     </section>
   );

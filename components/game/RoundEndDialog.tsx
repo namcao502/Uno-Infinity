@@ -45,7 +45,7 @@ export function RoundEndDialog({ roomId, meta, seats, winnerId }: RoundEndDialog
           ))}
         </ul>
         <div className="mt-5 flex justify-center">
-          <Button disabled={busy} variant="outline" onClick={backToLobby}>
+          <Button size="lg" disabled={busy} variant="outline" onClick={backToLobby}>
             {t.roundEnd.backToLobby}
           </Button>
         </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { DEFAULT_CONFIG, type RuleConfig } from '@last-card/engine';
 import { useAuth } from '@/lib/auth';
 import { callCreateRoom, callJoinRoom } from '@/lib/functions';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DeckConfig } from './DeckConfig';
@@ -41,14 +41,14 @@ export function CreateJoin({ mode, embedded = false }: { mode: 'create' | 'join'
     setBusy(true); setError('');
     try {
       const res = await callCreateRoom({ name: nickname || t.createJoin.nicknamePlaceholder, config, isPublic });
-      router.push(`/play?room=${res.data.roomId}`);
+      router.push(`/?room=${res.data.roomId}`);
     } catch (e) { setError(errMsg(e, t)); setBusy(false); }
   };
   const join = async (role: 'player' | 'audience') => {
     setBusy(true); setError('');
     try {
       const res = await callJoinRoom({ code: code.trim().toUpperCase(), name: nickname || t.createJoin.nicknamePlaceholder, role });
-      router.push(`/play?room=${res.data.roomId}`);
+      router.push(`/?room=${res.data.roomId}`);
     } catch (e) { setError(errMsg(e, t)); setBusy(false); }
   };
 
@@ -66,13 +66,11 @@ export function CreateJoin({ mode, embedded = false }: { mode: 'create' | 'join'
           <Label htmlFor="code">{t.createJoin.roomCodeLabel}</Label>
           <Input id="code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, LIMITS.roomCodeLength))} placeholder="ABCD" className="uppercase tracking-widest" />
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={busy || !ready || !codeReady} onClick={() => join('player')}>{t.createJoin.joinAsPlayer}</Button>
-            <Button variant="outline" disabled={busy || !ready || !codeReady} onClick={() => join('audience')}>{t.createJoin.watchAsAudience}</Button>
+          <div className="flex flex-col gap-2">
+            <Button size="lg" disabled={busy || !ready || !codeReady} onClick={() => join('player')} className="w-full">{t.createJoin.joinAsPlayer}</Button>
+            <Button size="lg" variant="outline" disabled={busy || !ready || !codeReady} onClick={() => join('audience')} className="w-full">{t.createJoin.watchAsAudience}</Button>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {t.createJoin.or}{' '}<Link href="/?browse" className="font-semibold text-foreground underline">{t.createJoin.browsePrompt}</Link>
-          </p>
+          <Link href="/?browse" scroll={false} className={buttonVariants({ variant: 'ghost', size: 'lg' })}>{t.createJoin.browsePrompt}</Link>
         </div>
       ) : (
         <div className="space-y-4">
@@ -83,7 +81,7 @@ export function CreateJoin({ mode, embedded = false }: { mode: 'create' | 'join'
             {t.createJoin.publicToggle}
           </label>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button disabled={busy || !ready} onClick={create} className="bg-lc-yellow text-lc-ink hover:bg-lc-yellow/90">
+          <Button size="lg" variant="outline" disabled={busy || !ready} onClick={create} className="w-full">
             {t.createJoin.createRoom}
           </Button>
         </div>

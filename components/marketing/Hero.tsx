@@ -1,7 +1,6 @@
 'use client';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/context';
 import { CardFan } from './CardFan';
 import { HeroBlobs } from './Blobs';
@@ -24,21 +23,22 @@ export function Hero() {
           {t.hero.subtitle}
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/?create" className={cn(buttonVariants({ size: 'lg' }), 'bg-lc-yellow text-lc-ink hover:bg-lc-yellow/90')}>
+          <Link href="/?create" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
             {t.hero.createRoom}
           </Link>
           <Link href="/?browse" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
             {t.hero.browseRooms}
           </Link>
-          <Link href="/?join" className={buttonVariants({ variant: 'ghost', size: 'lg' })}>
+          <Link href="/?join" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
             {t.hero.joinWithCode}
           </Link>
         </div>
       </div>
       <div className="relative">
         <CardFan />
-        {/* Floating "live" spec badge (borrowed technique, re-skinned to brand). */}
-        <div className="absolute bottom-2 right-2 flex items-center gap-2.5 rounded-2xl border bg-card/95 px-3.5 py-2.5 shadow-xl backdrop-blur sm:right-6">
+        {/* Floating "live" spec badge (borrowed technique, re-skinned to brand). z-10 keeps it
+            above the fanned cards, which set their own zIndex (0-4) and would otherwise cover it. */}
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-2.5 rounded-2xl border bg-card/30 px-3.5 py-2.5 shadow-xl backdrop-blur-md sm:right-6">
           <span className="relative flex h-2.5 w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lc-green opacity-75 motion-reduce:animate-none" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-lc-green" />

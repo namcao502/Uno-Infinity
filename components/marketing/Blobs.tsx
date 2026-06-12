@@ -18,15 +18,16 @@ function Blob({ variant, className }: { variant: keyof typeof PATHS; className?:
   );
 }
 
-/** Soft, slowly-drifting brand-colored blobs for a section background. Decorative + non-interactive. */
+/** Soft, slowly-drifting brand-colored blobs - one per card color - fixed behind the whole page
+ *  so they stay put while you scroll. Decorative + non-interactive. will-change-transform promotes
+ *  each to its own layer so the blur isn't re-rasterized on scroll. */
 export function HeroBlobs({ className }: { className?: string }) {
   return (
-    <div aria-hidden className={cn('pointer-events-none absolute inset-0 -z-10 overflow-hidden', className)}>
-      {/* will-change-transform promotes each blob to its own layer so the blur isn't re-rasterized
-          every frame; the third is dropped on small screens to keep low-end mobile smooth. */}
-      <Blob variant="a" className="absolute -left-24 -top-28 h-80 w-80 text-lc-yellow/25 blur-2xl will-change-transform animate-blob-1 motion-reduce:animate-none" />
-      <Blob variant="b" className="absolute -right-20 top-8 h-72 w-72 text-lc-red/20 blur-2xl will-change-transform animate-blob-2 motion-reduce:animate-none" />
-      <Blob variant="c" className="absolute -bottom-10 left-1/3 hidden h-72 w-72 text-lc-blue/15 blur-2xl will-change-transform animate-blob-3 motion-reduce:animate-none sm:block" />
+    <div aria-hidden className={cn('pointer-events-none fixed inset-y-0 left-1/2 w-full max-w-6xl -translate-x-1/2 -z-10 overflow-hidden', className)}>
+      <Blob variant="a" className="absolute left-4 top-20 h-[32rem] w-[32rem] text-lc-red/20 blur-3xl will-change-transform animate-blob-1 motion-reduce:animate-none" />
+      <Blob variant="b" className="absolute right-4 top-14 h-[32rem] w-[32rem] text-lc-green/20 blur-3xl will-change-transform animate-blob-2 motion-reduce:animate-none" />
+      <Blob variant="c" className="absolute bottom-12 left-8 h-[32rem] w-[32rem] text-lc-blue/20 blur-3xl will-change-transform animate-blob-3 motion-reduce:animate-none" />
+      <Blob variant="b" className="absolute bottom-16 right-8 h-[32rem] w-[32rem] text-lc-yellow/20 blur-3xl will-change-transform animate-blob-1 [animation-delay:-7s] motion-reduce:animate-none" />
     </div>
   );
 }

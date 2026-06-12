@@ -43,6 +43,7 @@ async function syncLobby(roomId: string): Promise<void> {
   const hostSeat = seats[meta.hostId];
   await db.ref(`lobbies/${roomId}`).update({
     code: meta.code ?? roomId,
+    hostId: meta.hostId,
     hostName: hostSeat?.name ?? 'Host',
     players,
     maxPlayers: meta.maxPlayers,
@@ -108,7 +109,7 @@ export const createRoom = onCall(async (req) => {
   // Publish to the browse index (non-sensitive fields only).
   if (isPublic) {
     await db.ref(`lobbies/${roomId}`).set({
-      code, hostName: name, players: 1, maxPlayers: config.maxPlayers, phase: 'lobby',
+      code, hostId: uid, hostName: name, players: 1, maxPlayers: config.maxPlayers, phase: 'lobby',
       createdAt: Date.now(), deckTotal: deckTotal(config.deck), startingHandSize: config.startingHandSize,
     });
   }
@@ -187,6 +188,23 @@ export const addBot = onCall(async (req) => {
   return { botId };
 });
 
+/** Host-only: drop a bot seat before the game starts (undo a mistaken Add bot). Lobby phase only. */
+export const removeBot = onCall(async (req) => {
+  const uid = requireHuman(req.auth);
+  const roomId = String(req.data?.roomId ?? '');
+  const botId = String(req.data?.botId ?? '');
+  const meta = (await db.ref(`rooms/${roomId}/meta`).get()).val();
+  if (!meta) throw new HttpsError('not-found', 'Room not found');
+  if (meta.hostId !== uid) throw new HttpsError('permission-denied', 'Only the host may remove bots');
+  if (meta.phase !== 'lobby') throw new HttpsError('failed-precondition', 'Game already started');
+
+  const seat = (await db.ref(`rooms/${roomId}/seats/${botId}`).get()).val();
+  if (!seat?.isBot) throw new HttpsError('not-found', 'No such bot');
+  await db.ref(`rooms/${roomId}/seats/${botId}`).remove();
+  await syncLobby(roomId);
+  return { ok: true };
+});
+
 /** Stop playing but stay in the room as a spectator. */
 export const becomeAudience = onCall(async (req) => {
   const uid = requireHuman(req.auth);
@@ -233,6 +251,25 @@ export const returnToLobby = onCall(async (req) => {
     db.ref(`peek/${roomId}`).remove(),
   ]);
   await syncLobby(roomId);
+  return { ok: true };
+});
+
+/** Host-only: tear the whole room down for everyone. Idempotent (already-gone -> ok).
+ *  Removes every path the room touches, incl. the server-only secure/ and peek/ nodes. */
+export const deleteRoom = onCall(async (req) => {
+  const uid = requireHuman(req.auth);
+  const roomId = String(req.data?.roomId ?? '');
+  const meta = (await db.ref(`rooms/${roomId}/meta`).get()).val();
+  if (!meta) return { ok: true };                          // already deleted
+  if (meta.hostId !== uid) throw new HttpsError('permission-denied', 'Only the host may delete the room');
+
+  await Promise.all([
+    db.ref(`rooms/${roomId}`).remove(),
+    db.ref(`hands/${roomId}`).remove(),
+    db.ref(`secure/${roomId}`).remove(),
+    db.ref(`peek/${roomId}`).remove(),
+    db.ref(`lobbies/${roomId}`).remove(),
+  ]);
   return { ok: true };
 });
 

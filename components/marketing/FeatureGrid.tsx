@@ -26,7 +26,7 @@ export function FeatureGrid() {
         <div
           key={f.title}
           className={cn(
-            'group relative flex flex-col overflow-hidden rounded-2xl border bg-card p-6 transition-all duration-200',
+            'group relative flex flex-col overflow-hidden rounded-2xl border bg-card/30 p-6 backdrop-blur-md transition-all duration-200',
             'shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_12px_30px_-18px_rgba(0,0,0,0.6)]',
             'hover:-translate-y-1 hover:border-lc-yellow/30 hover:shadow-[0_1px_0_0_rgba(255,255,255,0.06)_inset,0_22px_45px_-22px_rgba(0,0,0,0.7)]',
             f.span,

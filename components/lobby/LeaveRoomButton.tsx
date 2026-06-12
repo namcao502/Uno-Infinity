@@ -32,11 +32,11 @@ export function LeaveRoomButton({ roomId, canBecomeAudience = true }: { roomId: 
             <h3 className="text-lg font-bold">{t.leave.title}</h3>
             <p className="mt-1 text-sm text-muted-foreground">{t.leave.note}</p>
             <div className="mt-5 flex flex-col gap-2">
-              <Button disabled={busy} onClick={leave} className="bg-lc-red text-white hover:bg-lc-red/90">{t.leave.leaveRoom}</Button>
+              <Button size="lg" disabled={busy} onClick={leave} className="bg-lc-red text-white hover:bg-lc-red/90">{t.leave.leaveRoom}</Button>
               {canBecomeAudience && (
-                <Button disabled={busy} variant="outline" onClick={audience}>{t.leave.becomeAudience}</Button>
+                <Button size="lg" disabled={busy} variant="outline" onClick={audience}>{t.leave.becomeAudience}</Button>
               )}
-              <Button disabled={busy} variant="ghost" onClick={() => setOpen(false)}>{t.common.cancel}</Button>
+              <Button size="lg" disabled={busy} variant="ghost" onClick={() => setOpen(false)}>{t.common.cancel}</Button>
             </div>
           </div>
         </div>

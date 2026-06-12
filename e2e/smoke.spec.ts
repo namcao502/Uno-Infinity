@@ -14,7 +14,7 @@ test.describe('Landing page', () => {
 
   test('has the anchored one-page sections', async ({ page }) => {
     await page.goto('/');
-    for (const id of ['how-to-play', 'rules', 'about']) {
+    for (const id of ['how-to-play', 'about']) {
       await expect(page.locator(`#${id}`)).toBeAttached();
     }
   });
@@ -25,6 +25,7 @@ test.describe('Room popups (URL-driven)', () => {
     create: 'Create a room',
     browse: 'Open rooms',
     join: 'Join a room',
+    rules: 'House rules',
   };
   for (const [param, title] of Object.entries(titles)) {
     test(`/?${param} opens the ${param} dialog`, async ({ page }) => {

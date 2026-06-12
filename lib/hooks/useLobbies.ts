@@ -5,6 +5,7 @@ import { rtdb } from '../firebase/db';
 
 export interface LobbyRoom {
   code: string;
+  hostId?: string;
   hostName: string;
   players: number;
   maxPlayers: number;

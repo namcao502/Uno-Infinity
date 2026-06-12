@@ -10,6 +10,6 @@ const RoomDialogs = dynamic(() => import('./RoomDialogs').then((m) => ({ default
 
 export function RoomDialogsLazy() {
   const params = useSearchParams();
-  const active = params.has('create') || params.has('browse') || params.has('join');
+  const active = params.has('create') || params.has('browse') || params.has('join') || params.has('room') || params.has('rules');
   return active ? <RoomDialogs /> : null;
 }

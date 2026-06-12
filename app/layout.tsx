@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n/context";
 import { LOCALE_COOKIE, pickLocale } from "@/lib/i18n";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { GlobalLoadingOverlay } from "@/components/GlobalLoadingOverlay";
 
 // Distinctive display face for headings/wordmark; body keeps the fast system stack.
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
@@ -45,6 +46,7 @@ export default async function RootLayout({
           <LanguageProvider initialLocale={locale}>
             <AuthProvider>{children}</AuthProvider>
             <Toaster />
+            <GlobalLoadingOverlay />
           </LanguageProvider>
         </ThemeProvider>
         <ServiceWorkerRegister />

@@ -21,7 +21,9 @@ function RuleCards({ cards }: { cards?: Card[] }) {
   );
 }
 
-export function RulesSection() {
+/** The House Rules card reference (grouped card list). Rendered inside the ?rules popup,
+ *  which supplies the heading and intro. */
+export function RulesReference() {
   const t = useT();
   const it = t.rules.items;
   const sections: { title: string; items: RuleItem[] }[] = [
@@ -62,29 +64,23 @@ export function RulesSection() {
   ];
 
   return (
-    <section id="rules" className="mt-20 scroll-mt-24">
-      <div className="mx-auto max-w-4xl">
-        <h2 className="text-3xl font-black">{t.rules.heading}</h2>
-        <p className="mt-2 text-muted-foreground">{t.rules.intro}</p>
-        <div className="mt-6 space-y-8">
-          {sections.map((s) => (
-            <div key={s.title}>
-              <h3 className="text-xl font-bold">{s.title}</h3>
-              <dl className="mt-3 space-y-3">
-                {s.items.map((item) => (
-                  <div key={item.name} className="flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center">
-                    <RuleCards cards={item.cards} />
-                    <div className="min-w-0">
-                      <dt className="font-semibold">{item.name}</dt>
-                      <dd className="text-sm text-muted-foreground">{item.desc}</dd>
-                    </div>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ))}
+    <div className="space-y-8">
+      {sections.map((s) => (
+        <div key={s.title}>
+          <h3 className="text-lg font-bold">{s.title}</h3>
+          <dl className="mt-3 space-y-3">
+            {s.items.map((item) => (
+              <div key={item.name} className="flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center">
+                <RuleCards cards={item.cards} />
+                <div className="min-w-0">
+                  <dt className="font-semibold">{item.name}</dt>
+                  <dd className="text-sm text-muted-foreground">{item.desc}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
         </div>
-      </div>
-    </section>
+      ))}
+    </div>
   );
 }
